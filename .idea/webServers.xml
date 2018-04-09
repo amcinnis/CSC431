@@ -2,7 +2,7 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="79f1db13-20a4-4d4c-afdf-84597e3da1ad" name="unix4" url="http://unix4.csc.calpoly.edu">
+      <webServer id="1d236464-e4bf-46d6-bac1-8b5ffd3a04e8" name="unix4" url="http://unix4.csc.calpoly.edu">
         <fileTransfer host="unix4.csc.calpoly.edu" port="22" rootFolder="/home/amcinnis/csc431" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" />
