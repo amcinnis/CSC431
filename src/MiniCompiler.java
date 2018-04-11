@@ -1,3 +1,4 @@
+import TypeChecker.Checker;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
@@ -34,6 +35,9 @@ public class MiniCompiler
          MiniToAstProgramVisitor programVisitor =
             new MiniToAstProgramVisitor();
          ast.Program program = programVisitor.visit(tree);
+
+         Checker checker = new Checker(program);
+         checker.checkProgram();
       }
    }
 

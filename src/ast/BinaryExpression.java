@@ -1,6 +1,6 @@
 package ast;
 
-public class BinaryExpression
+public class  BinaryExpression
    extends AbstractExpression
 {
    private final Operator operator;

@@ -1,6 +1,7 @@
 *.class
 *.jar
 out/
+input/
 
 # User-specific stuff
 .idea/**/workspace.xml

@@ -1,5 +1,6 @@
 package ast;
 
+import java.util.HashMap;
 import java.util.List;
 
 public class Program
@@ -14,5 +15,17 @@ public class Program
       this.types = types;
       this.decls = decls;
       this.funcs = funcs;
+   }
+
+   public List<TypeDeclaration> getTypes() {
+      return types;
+   }
+
+   public List<Declaration> getDecls() {
+      return decls;
+   }
+
+   public List<Function> getFuncs() {
+      return funcs;
    }
 }
