@@ -1,6 +1,6 @@
 package ast;
 
-public class  BinaryExpression
+public class BinaryExpression
    extends AbstractExpression
 {
    private final Operator operator;
@@ -66,5 +66,17 @@ public class  BinaryExpression
    public static enum Operator
    {
       TIMES, DIVIDE, PLUS, MINUS, LT, GT, LE, GE, EQ, NE, AND, OR
+   }
+
+   public Operator getOperator() {
+      return operator;
+   }
+
+   public Expression getLeft() {
+      return left;
+   }
+
+   public Expression getRight() {
+      return right;
    }
 }
