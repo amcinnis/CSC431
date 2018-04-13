@@ -72,8 +72,6 @@ public class Checker {
                 globalsMap.put(id, decl);
             }
         }
-
-        //TODO Check to see if need to differentiate between types
     }
 
     private void checkFunctions() {
@@ -153,6 +151,11 @@ public class Checker {
             else if (statement instanceof ConditionalStatement) {
                 ConditionalStatement conditional = (ConditionalStatement) statement;
                 checkConditionalStatement(conditional, functionName);
+            }
+            //While
+            else if (statement instanceof WhileStatement) {
+                WhileStatement whileStatement = (WhileStatement) statement;
+                checkWhileStatement(whileStatement, functionName);
             }
             //Block
             else if (statement instanceof BlockStatement) {
@@ -301,6 +304,17 @@ public class Checker {
         }
     }
 
+    private void checkWhileStatement(WhileStatement whileStatement, String functionName) {
+        Expression guardExp = whileStatement.getGuard();
+        checkGuardExpression(guardExp, functionName);
+
+        Statement body = whileStatement.getBody();
+        if (body instanceof BlockStatement) {
+            BlockStatement blockStatement = (BlockStatement) body;
+            checkBlockStatement(blockStatement, functionName);
+        }
+    }
+
     private void checkGuardExpression(Expression guardExp, String functionName) {
         if (guardExp instanceof BinaryExpression) {
             BinaryExpression guard = (BinaryExpression) guardExp;
@@ -313,19 +327,27 @@ public class Checker {
 
             Type leftType = getExpressionType(left, functionName);
             Type rightType = getExpressionType(right, functionName);
+            int lineNum = ((AbstractExpression) left).getLineNum();
 
             if (opName.equals("AND") || opName.equals("OR")) {
                 //Check that leftType and rightType are both BoolType
                 if (!(leftType instanceof BoolType && rightType instanceof BoolType)) {
-                    System.out.println("Error: Incompatible types in conditional guard! " +
+                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                             "Logical operators require both types to be of type boolean.");
                 }
             }
             else if (opName.equals("EQ") || opName.equals("NE")) {
                 //Check that leftType and rightType are same type
                 if (!(leftType.equals(rightType))) {
-                    System.out.println("Error: Incompatible types in conditional guard! " +
+                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                             "Equality operators require both types to be of same type.");
+                }
+            }
+            else if (opName.equals("LT") || opName.equals("LE") || opName.equals("GT") || opName.equals("GE")) {
+                //Check that leftType and rightType are both IntType
+                if (!(leftType instanceof IntType && rightType instanceof IntType)) {
+                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                            "Comparator operators require both types to be of type integer.");
                 }
             }
             else {
