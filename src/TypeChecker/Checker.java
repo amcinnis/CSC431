@@ -167,6 +167,16 @@ public class Checker {
                 AssignmentStatement newAssignment = (AssignmentStatement) statement;
                 checkAssignmentStatement(newAssignment, functionName);
             }
+            //Print
+            else if (statement instanceof PrintStatement) {
+                PrintStatement printStatement = (PrintStatement) statement;
+                checkPrintStatement(printStatement, functionName);
+            }
+            //PrintLn
+            else if (statement instanceof PrintLnStatement) {
+                PrintLnStatement printLnStatement = (PrintLnStatement) statement;
+                checkPrintLnStatement(printLnStatement, functionName);
+            }
         }
     }
 
@@ -188,11 +198,15 @@ public class Checker {
         }
         else if (lvalue instanceof LvalueDot) {
             LvalueDot top = (LvalueDot) lvalue;
-            lineNum = top.getLineNum();
             leftId = top.getId();
 
-            Type leftStructType = getLValueDotType(top.getLeft(), leftId, functionName);
-            leftType = getStructFieldType(leftStructType, leftId);
+            Type leftStructType = getLValueDotType(top.getLeft(), functionName);
+            try {
+                leftType = getStructFieldType(leftStructType, leftId);
+            }
+            catch (StructFieldNotFoundException e) {
+                e.printError(top.getLineNum(), leftId);
+            }
         }
 
         if (rightType != null) {
@@ -221,7 +235,7 @@ public class Checker {
         }
     }
 
-    private Type getLValueDotType(Expression left, String id, String functionName) {
+    private Type getLValueDotType(Expression left, String functionName) {
         if (left instanceof IdentifierExpression) {
             IdentifierExpression idExp = (IdentifierExpression) left;
             String farLeftName = idExp.getId();
@@ -235,21 +249,39 @@ public class Checker {
                 System.out.println(farLeftName + "is not of type 'struct'!");
             }
         }
+        else if (left instanceof InvocationExpression) {
+            InvocationExpression invocationExpression = (InvocationExpression) left;
+            String invExpName = invocationExpression.getName();
+
+            if (functionsMap.containsKey(invExpName)) {
+                Function function = (Function) functionsMap.get(invExpName);
+                return function.getRetType();
+            }
+            else {
+                int lineNum = invocationExpression.getLineNum();
+                System.out.println("Error! Line " + lineNum + ": Function '" +
+                        invExpName + "' not previously defined!");
+            }
+        }
         else if (left instanceof DotExpression) {
             DotExpression leftExp = (DotExpression) left;
             Expression nextExp = leftExp.getLeft();
             String nextId = leftExp.getId();
 
-            Type leftType = getLValueDotType(nextExp, nextId, functionName);
-            Type fieldType = getStructFieldType(leftType, nextId);
-
-            return fieldType;
+            Type leftType = getLValueDotType(nextExp, functionName);
+            try {
+                Type fieldType = getStructFieldType(leftType, nextId);
+                return fieldType;
+            }
+            catch (StructFieldNotFoundException e) {
+                e.printError(leftExp.getLineNum(), nextId);
+            }
         }
 
         return null;
     }
 
-    private Type getStructFieldType(Type leftType, String id) {
+    private Type getStructFieldType(Type leftType, String id) throws StructFieldNotFoundException {
         if (leftType instanceof StructType) {
             StructType structType = (StructType) leftType;
 
@@ -266,13 +298,22 @@ public class Checker {
                         return field.getType();
                     }
                 }
-                System.out.println("Struct " + struct.getName() + " does not contain a field named: '" + id + "'!");
+                throw new StructFieldNotFoundException(structName);
             } else {
                 System.out.println("Struct " + structName + " not previously defined!");
             }
         }
         else {
-            System.out.println("Incorrect type passed to getStructFieldType");
+            if (leftType instanceof IntType) {
+                throw new StructFieldNotFoundException("IntType");
+            }
+            else if (leftType instanceof BoolType) {
+                throw new StructFieldNotFoundException("BoolType");
+            }
+            else if (leftType instanceof VoidType) {
+                throw new StructFieldNotFoundException("VoidType");
+            }
+
         }
 
         return null;
@@ -338,9 +379,11 @@ public class Checker {
             }
             else if (opName.equals("EQ") || opName.equals("NE")) {
                 //Check that leftType and rightType are same type
-                if (!(leftType.equals(rightType))) {
-                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
-                            "Equality operators require both types to be of same type.");
+                if (!(leftType instanceof IntType || leftType instanceof StructType)) {
+                    if (!(leftType.equals(rightType))) {
+                        System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                                "Equality operators require types to be of same type integer or struct.");
+                    }
                 }
             }
             else if (opName.equals("LT") || opName.equals("LE") || opName.equals("GT") || opName.equals("GE")) {
@@ -360,6 +403,26 @@ public class Checker {
         }
         else {
             System.out.println("Non Binary expression in guard of Conditional");
+        }
+    }
+
+    private void checkPrintStatement(PrintStatement printStatement, String functionName) {
+        Expression expression = printStatement.getExpression();
+        Type type = getExpressionType(expression, functionName);
+
+        if (!(type instanceof IntType)) {
+            int lineNum = ((AbstractExpression) expression).getLineNum();
+            System.out.println("Error! Line " + lineNum + ": Print statement requires integer argument.");
+        }
+    }
+
+    private void checkPrintLnStatement(PrintLnStatement printLnStatement, String functionName) {
+        Expression expression = printLnStatement.getExpression();
+        Type type = getExpressionType(expression, functionName);
+
+        if (!(type instanceof IntType)) {
+            int lineNum = ((AbstractExpression) expression).getLineNum();
+            System.out.println("Error! Line " + lineNum + ": PrintLn statement requires integer argument.");
         }
     }
 
@@ -392,6 +455,20 @@ public class Checker {
         else if (expression instanceof UnaryExpression) {
             UnaryExpression unaryExpression = (UnaryExpression) expression;
             return getExpressionType(unaryExpression.getOperand(), functionName);
+        }
+        else if (expression instanceof DotExpression) {
+            DotExpression dotExpression = (DotExpression) expression;
+            String id = dotExpression.getId();
+            Expression left = dotExpression.getLeft();
+
+            Type lType = getLValueDotType(left, functionName);
+            try {
+                Type idType = getStructFieldType(lType, id);
+                return idType;
+            }
+            catch (StructFieldNotFoundException e) {
+                e.printError(dotExpression.getLineNum(), id);
+            }
         }
         else if (expression instanceof NullExpression) {
             return null;
