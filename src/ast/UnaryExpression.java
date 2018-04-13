@@ -37,4 +37,12 @@ public class UnaryExpression
    {
       NOT, MINUS
    }
+
+   public Operator getOperator() {
+      return operator;
+   }
+
+   public Expression getOperand() {
+      return operand;
+   }
 }

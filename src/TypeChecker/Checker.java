@@ -367,6 +367,10 @@ public class Checker {
 
             return getIdentifierType(name, functionName);
         }
+        else if (expression instanceof UnaryExpression) {
+            UnaryExpression unaryExpression = (UnaryExpression) expression;
+            return getExpressionType(unaryExpression.getOperand(), functionName);
+        }
         else if (expression instanceof NullExpression) {
             return null;
         }
