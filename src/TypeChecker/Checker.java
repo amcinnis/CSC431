@@ -192,7 +192,7 @@ public class Checker {
             leftType = getStructFieldType(leftStructType, leftId);
         }
 
-        if (!(rightType instanceof VoidType)) {
+        if (rightType != null) {
             if (!(leftType.getClass().equals(rightType.getClass()))) {
                 System.out.println("Line " + lineNum + ": Incompatible types in assignment! " +
                         leftId + ":" + typeToString(leftType) + " R:" + typeToString(rightType));
@@ -366,6 +366,9 @@ public class Checker {
             String name = identifierExpression.getId();
 
             return getIdentifierType(name, functionName);
+        }
+        else if (expression instanceof NullExpression) {
+            return null;
         }
         else {
             System.out.println("Unaccounted for Expression in getExpressionType!");
