@@ -185,9 +185,29 @@ public class Checker {
             }
             //ReturnEmpty
             //TODO Account for ReturnEmptyStatement
+            else if (statement instanceof  ReturnEmptyStatement) {
+                ReturnEmptyStatement returnEmptyStatement = (ReturnEmptyStatement) statement;
+                checkReturnEmptyStatement(returnEmptyStatement, functionName);
+            }
         }
     }
 
+    private void checkReturnEmptyStatement(ReturnEmptyStatement returnEmptyStatement, String functionName) {
+        int lineNum = returnEmptyStatement.getLineNum();
+
+        if (functionsMap.containsKey(functionName)) {
+            Function function = (Function) functionsMap.get(functionName);
+            Type returnType = function.getRetType();
+
+            if (!(returnType instanceof VoidType)) {
+                System.out.println("Error! Line " + lineNum + ": Funtion '" + functionName +
+                        "' requires return of type " + typeToString(returnType) + ".");
+            }
+        }
+        else {
+            System.out.println("Error! Line " + lineNum + ": Function '" + functionName + "' not previously defined!");
+        }
+    }
     private void checkReturnStatement(ReturnStatement returnStatement, String functionName) {
         Expression expression = returnStatement.getExpression();
         Type returnType = getExpressionType(expression, functionName);
@@ -360,9 +380,12 @@ public class Checker {
         if (expression instanceof InvocationExpression) {
             String invExpName = ((InvocationExpression) expression).getName();
             if (!(functionsMap.containsKey(invExpName))) {
-                System.out.println("Error: Function \"" + invExpName + "\" not previously defined!");
+                int lineNum = invocation.getLineNum();
+                System.out.println("Error! Line "+ lineNum + ": Function \"" + invExpName + "\" not previously defined!");
             }
         }
+
+        //TODO Check Arguments
     }
 
     private void checkConditionalStatement(ConditionalStatement conditional, String functionName) {
@@ -423,18 +446,11 @@ public class Checker {
                     }
                 }
             }
-            else if (opName.equals("LT") || opName.equals("LE") || opName.equals("GT") || opName.equals("GE")) {
-                //Check that leftType and rightType are both IntType
-                if (!(leftType instanceof IntType && rightType instanceof IntType)) {
-                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
-                            "Comparator operators require both types to be of type integer.");
-                }
-            }
             else {
                 //Check that leftType and rightType are both IntType
                 if (!(leftType instanceof IntType && rightType instanceof IntType)) {
-                    System.out.println("Error: Incompatible types in conditional guard! " +
-                            "Arithmetic operators require both types to be of type int.");
+                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                            "Arithmetic and Relational operators require both types to be of type int.");
                 }
             }
         }
@@ -508,6 +524,57 @@ public class Checker {
         }
         else if (expression instanceof NullExpression) {
             return null;
+        }
+        else if (expression instanceof BinaryExpression) {
+            BinaryExpression binaryExpression = (BinaryExpression) expression;
+            BinaryExpression.Operator operator = binaryExpression.getOperator();
+            String opName = operator.name();
+
+            Expression left = binaryExpression.getLeft();
+            Expression right = binaryExpression.getRight();
+            int lineNum = ((AbstractExpression) left).getLineNum();
+
+            Type leftType = getExpressionType(left, functionName);
+            Type rightType = getExpressionType(right, functionName);
+
+            //TODO Account for null RHS
+            if (opName.equals("AND") || opName.equals("OR")) {
+                //Check that leftType and rightType are both BoolType
+                if (!(leftType instanceof BoolType && rightType instanceof BoolType)) {
+                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                            "Logical operators require both types to be of type boolean.");
+                }
+                else {
+                    return new BoolType();
+                }
+            }
+            else if (opName.equals("EQ") || opName.equals("NE")) {
+                //Check that leftType and rightType are same type
+                if (!(leftType instanceof IntType || leftType instanceof StructType)) {
+                    if (!(leftType.equals(rightType))) {
+                        System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                                "Equality operators require types to be of same type integer or struct.");
+                    }
+                }
+                else {
+                    return new BoolType();
+                }
+            }
+            else {
+                //Check that leftType and rightType are both IntType
+                if (!(leftType instanceof IntType && rightType instanceof IntType)) {
+                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                            "Arithmetic and Relational operators require both types to be of type int.");
+                }
+                else {
+                    if (opName.equals("GT") || opName.equals("GE") || opName.equals("LT") || opName.equals("LE")) {
+                        return new BoolType();
+                    }
+                    else {
+                        return new IntType();
+                    }
+                }
+            }
         }
         else {
             System.out.println("Unaccounted for Expression in getExpressionType!");
