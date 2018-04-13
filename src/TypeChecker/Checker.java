@@ -140,6 +140,7 @@ public class Checker {
 
     private void checkBlockStatement(BlockStatement block, String functionName) {
         List <Statement> statements = block.getStatements();
+        Boolean standardReturn = false;
 
         for (Statement statement : statements) {
             //Invocation
@@ -177,6 +178,37 @@ public class Checker {
                 PrintLnStatement printLnStatement = (PrintLnStatement) statement;
                 checkPrintLnStatement(printLnStatement, functionName);
             }
+            //Return
+            else if (statement instanceof ReturnStatement) {
+                ReturnStatement returnStatement = (ReturnStatement) statement;
+                checkReturnStatement(returnStatement, functionName);
+            }
+            //ReturnEmpty
+            //TODO Account for ReturnEmptyStatement
+        }
+    }
+
+    private void checkReturnStatement(ReturnStatement returnStatement, String functionName) {
+        Expression expression = returnStatement.getExpression();
+        Type returnType = getExpressionType(expression, functionName);
+
+        if (functionsMap.containsKey(functionName)) {
+            Function function = (Function) functionsMap.get(functionName);
+            Type declaredReturnType = function.getRetType();
+
+            if (returnType != null) {
+                if (!(returnType.getClass().equals(declaredReturnType.getClass()))) {
+                    int lineNum = ((AbstractExpression) expression).getLineNum();
+                    System.out.println("Error! Line " + lineNum + ": Return type of type '" + typeToString(returnType) +
+                            "' does not match declared return type of type '" + typeToString(declaredReturnType) + "'.");
+                }
+            }
+            else {
+                System.out.println("Null return type");
+            }
+        }
+        else {
+            System.out.println("Error! Function '" + functionName + "' not previously defined!");
         }
     }
 
@@ -210,9 +242,14 @@ public class Checker {
         }
 
         if (rightType != null) {
-            if (!(leftType.getClass().equals(rightType.getClass()))) {
-                System.out.println("Line " + lineNum + ": Incompatible types in assignment! " +
-                        leftId + ":" + typeToString(leftType) + " R:" + typeToString(rightType));
+            if (leftType != null) {
+                if (!(leftType.getClass().equals(rightType.getClass()))) {
+                    System.out.println("Line " + lineNum + ": Incompatible types in assignment! " +
+                            leftId + ":" + typeToString(leftType) + " R:" + typeToString(rightType));
+                }
+            }
+            else {
+                System.out.println("LHS of AssignmentStatement is null!");
             }
         }
     }
@@ -270,8 +307,7 @@ public class Checker {
 
             Type leftType = getLValueDotType(nextExp, functionName);
             try {
-                Type fieldType = getStructFieldType(leftType, nextId);
-                return fieldType;
+                return getStructFieldType(leftType, nextId);
             }
             catch (StructFieldNotFoundException e) {
                 e.printError(leftExp.getLineNum(), nextId);
@@ -370,6 +406,7 @@ public class Checker {
             Type rightType = getExpressionType(right, functionName);
             int lineNum = ((AbstractExpression) left).getLineNum();
 
+            //TODO Account for null RHS
             if (opName.equals("AND") || opName.equals("OR")) {
                 //Check that leftType and rightType are both BoolType
                 if (!(leftType instanceof BoolType && rightType instanceof BoolType)) {
@@ -463,8 +500,7 @@ public class Checker {
 
             Type lType = getLValueDotType(left, functionName);
             try {
-                Type idType = getStructFieldType(lType, id);
-                return idType;
+                return getStructFieldType(lType, id);
             }
             catch (StructFieldNotFoundException e) {
                 e.printError(dotExpression.getLineNum(), id);
