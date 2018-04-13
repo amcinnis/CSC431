@@ -1,7 +1,6 @@
 package TypeChecker;
 
 import ast.*;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -175,25 +174,105 @@ public class Checker {
 
         Type rightType = getExpressionType(right, functionName);
         Type leftType = null;
+        String leftId = null;
+        int lineNum = -1;
 
         if (lvalue instanceof LvalueId) {
             LvalueId left = (LvalueId) lvalue;
-            String name = left.getId();
-            leftType = getIdentifierType(name, functionName);
+            leftId = left.getId();
+            lineNum = left.getLineNum();
+            leftType = getIdentifierType(leftId, functionName);
         }
         else if (lvalue instanceof LvalueDot) {
             LvalueDot top = (LvalueDot) lvalue;
+            lineNum = top.getLineNum();
+            leftId = top.getId();
 
-            //Goal: Find type of LHS
-            //
-            //Check left Expression
-            //Recursion:
-            //  base case: left instanceof IdentifierExpression
-            //      -get
-            //  Recursive Step: left instanceof DotExpression
+            Type leftStructType = getLValueDotType(top.getLeft(), leftId, functionName);
+            leftType = getStructFieldType(leftStructType, leftId);
         }
 
-        //TODO compare left and right types
+        if (!(rightType instanceof VoidType)) {
+            if (!(leftType.getClass().equals(rightType.getClass()))) {
+                System.out.println("Line " + lineNum + ": Incompatible types in assignment! " +
+                        leftId + ":" + typeToString(leftType) + " R:" + typeToString(rightType));
+            }
+        }
+    }
+
+    private String typeToString(Type type) {
+        if (type instanceof IntType) {
+            return "Integer";
+        }
+        else if (type instanceof BoolType) {
+            return "Boolean";
+        }
+        else if (type instanceof StructType) {
+            return "Struct";
+        }
+        else if (type instanceof VoidType) {
+            return "Void";
+        }
+        else {
+            return "Undefined";
+        }
+    }
+
+    private Type getLValueDotType(Expression left, String id, String functionName) {
+        if (left instanceof IdentifierExpression) {
+            IdentifierExpression idExp = (IdentifierExpression) left;
+            String farLeftName = idExp.getId();
+            Type farLeftType = getIdentifierType(farLeftName, functionName);
+
+            //Verify far left identifier is of type struct
+            if (farLeftType instanceof StructType) {
+                return farLeftType;
+            }
+            else {
+                System.out.println(farLeftName + "is not of type 'struct'!");
+            }
+        }
+        else if (left instanceof DotExpression) {
+            DotExpression leftExp = (DotExpression) left;
+            Expression nextExp = leftExp.getLeft();
+            String nextId = leftExp.getId();
+
+            Type leftType = getLValueDotType(nextExp, nextId, functionName);
+            Type fieldType = getStructFieldType(leftType, nextId);
+
+            return fieldType;
+        }
+
+        return null;
+    }
+
+    private Type getStructFieldType(Type leftType, String id) {
+        if (leftType instanceof StructType) {
+            StructType structType = (StructType) leftType;
+
+            //Get struct name
+            String structName = structType.getName();
+            //Lookup struct in structsMap
+            if (structsMap.containsKey(structName)) {
+                TypeDeclaration struct = (TypeDeclaration) structsMap.get(structName);
+                //Verify struct has a field with same name as 'id'
+                List<Declaration> fields = struct.getFields();
+                for (Declaration field : fields) {
+                    if (field.getName().equals(id)) {
+                        //Return type of field in struct
+                        return field.getType();
+                    }
+                }
+                System.out.println("Struct " + struct.getName() + " does not contain a field named: '" + id + "'!");
+            } else {
+                System.out.println("Struct " + structName + " not previously defined!");
+            }
+        }
+        else {
+            System.out.println("Incorrect type passed to getStructFieldType");
+        }
+
+        return null;
     }
 
     private void checkInvocationStatement(InvocationStatement invocation) {
