@@ -146,7 +146,7 @@ public class Checker {
             //Invocation
             if (statement instanceof InvocationStatement) {
                 InvocationStatement invocation = (InvocationStatement) statement;
-                checkInvocationStatement(invocation);
+                checkInvocationStatement(invocation, functionName);
             }
             //Conditional
             else if (statement instanceof ConditionalStatement) {
@@ -184,7 +184,6 @@ public class Checker {
                 checkReturnStatement(returnStatement, functionName);
             }
             //ReturnEmpty
-            //TODO Account for ReturnEmptyStatement
             else if (statement instanceof  ReturnEmptyStatement) {
                 ReturnEmptyStatement returnEmptyStatement = (ReturnEmptyStatement) statement;
                 checkReturnEmptyStatement(returnEmptyStatement, functionName);
@@ -195,8 +194,8 @@ public class Checker {
     private void checkReturnEmptyStatement(ReturnEmptyStatement returnEmptyStatement, String functionName) {
         int lineNum = returnEmptyStatement.getLineNum();
 
-        if (functionsMap.containsKey(functionName)) {
-            Function function = (Function) functionsMap.get(functionName);
+        Function function = getFunction(functionName, lineNum);
+        if (function != null) {
             Type returnType = function.getRetType();
 
             if (!(returnType instanceof VoidType)) {
@@ -204,16 +203,14 @@ public class Checker {
                         "' requires return of type " + typeToString(returnType) + ".");
             }
         }
-        else {
-            System.out.println("Error! Line " + lineNum + ": Function '" + functionName + "' not previously defined!");
-        }
     }
+
     private void checkReturnStatement(ReturnStatement returnStatement, String functionName) {
         Expression expression = returnStatement.getExpression();
         Type returnType = getExpressionType(expression, functionName);
+        Function function = getFunction(functionName, returnStatement.getLineNum());
 
-        if (functionsMap.containsKey(functionName)) {
-            Function function = (Function) functionsMap.get(functionName);
+        if (function != null) {
             Type declaredReturnType = function.getRetType();
 
             if (returnType != null) {
@@ -226,9 +223,6 @@ public class Checker {
             else {
                 System.out.println("Null return type");
             }
-        }
-        else {
-            System.out.println("Error! Function '" + functionName + "' not previously defined!");
         }
     }
 
@@ -311,8 +305,10 @@ public class Checker {
             String invExpName = invocationExpression.getName();
 
             if (functionsMap.containsKey(invExpName)) {
-                Function function = (Function) functionsMap.get(invExpName);
-                return function.getRetType();
+                Function function = getFunction(invExpName, invocationExpression.getLineNum());
+                if (function != null) {
+                    return function.getRetType();
+                }
             }
             else {
                 int lineNum = invocationExpression.getLineNum();
@@ -375,17 +371,58 @@ public class Checker {
         return null;
     }
 
-    private void checkInvocationStatement(InvocationStatement invocation) {
+    private void checkInvocationStatement(InvocationStatement invocation, String functionName) {
         Expression expression = invocation.getExpression();
         if (expression instanceof InvocationExpression) {
-            String invExpName = ((InvocationExpression) expression).getName();
-            if (!(functionsMap.containsKey(invExpName))) {
-                int lineNum = invocation.getLineNum();
-                System.out.println("Error! Line "+ lineNum + ": Function \"" + invExpName + "\" not previously defined!");
-            }
-        }
+            InvocationExpression invocationExpression = (InvocationExpression) expression;
+            String invExpName = invocationExpression.getName();
+            int lineNum = invocation.getLineNum();
+            Function function = getFunction(invExpName, lineNum);
 
-        //TODO Check Arguments
+            if (function != null) {
+                List <Expression> arguments = invocationExpression.getArguments();
+                List <Declaration> parameters = function.getParams();
+
+                if (arguments.size() != parameters.size()) {
+                    System.out.println("Error! Line " + lineNum + ": Number of arguments do not match number of " +
+                            "parameters for function '" + invExpName + "'.");
+                }
+                else {
+                    Type argType, paramType;
+                    for (int i = 0; i < arguments.size(); i++) {
+                        Expression argument = arguments.get(i);
+                        Declaration parameter = parameters.get(i);
+
+                        argType = getExpressionType(argument, functionName);
+                        paramType = parameter.getType();
+
+                        if (argType != null) {
+                            if (!(argType.getClass().equals(paramType.getClass()))) {
+                                System.out.println("Error! Line " + lineNum + ": Argument " + (i+1) + " of function '" + invExpName +
+                                        "' expects argument of type " + typeToString(paramType)
+                                        + ", found " + typeToString(argType) + ".");
+                            }
+                        }
+                        else {
+                            System.out.println("Received null return type for argument from getExpressionType()");
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+    private Function getFunction(String functionName, int lineNum) {
+        if (functionsMap.containsKey(functionName)) {
+            Function function = (Function) functionsMap.get(functionName);
+            return function;
+        }
+        else {
+            System.out.println("Error! Line " + lineNum + ": Function '" +
+                    functionName + "' not previously defined!");
+            return null;
+        }
     }
 
     private void checkConditionalStatement(ConditionalStatement conditional, String functionName) {
@@ -491,12 +528,9 @@ public class Checker {
             String name = invocationExpression.getName();
 
             //Find function return type in functions HashMap
-            if (functionsMap.containsKey(name)) {
-                Function function = (Function) functionsMap.get(name);
+            Function function = getFunction(functionName, invocationExpression.getLineNum());
+            if (function != null) {
                 return function.getRetType();
-            }
-            else {
-                System.out.println("Cannot find function \"" + name + "\" in functions list!");
             }
         }
         else if (expression instanceof IdentifierExpression) {
@@ -608,7 +642,7 @@ public class Checker {
             return identifier.getType();
         }
 
-        System.out.println("Cannot find identifier \"" + name + "\"!");
+        System.out.println("Error! Cannot find identifier \"" + name + "\"!");
 
         return null;
     }
