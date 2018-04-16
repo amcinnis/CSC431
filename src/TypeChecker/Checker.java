@@ -1,6 +1,8 @@
 package TypeChecker;
 
 import ast.*;
+import sun.jvm.hotspot.opto.Block;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -129,18 +131,125 @@ public class Checker {
             if (body instanceof BlockStatement) {
                 BlockStatement newBlock = (BlockStatement) body;
                 checkBlockStatement(newBlock, functionName);
+                Type retType = function.getRetType();
+                if (!(retType instanceof VoidType)) {
+                    if (newBlock.getStatements().size() > 0) {
+                        validateReturn(newBlock, functionName);
+                    }
+                    else {
+                        System.out.println("Error! Line " + newBlock.getLineNum() + ": Function '" + functionName +
+                                "' expects return type of type " + typeToString(retType) +
+                                " but is missing a return statement!");
+                    }
+                }
             }
         }
 
         //Check for main function
         if (!functionsMap.containsKey("main")) {
-            System.out.println("Error: Program is missing main method!");
+            System.out.println("Error!: Program is missing main method!");
         }
     }
 
+    private void validateReturn(BlockStatement block, String functionName) {
+        //TODO Check for standard vs. control flow case
+        //Check statements in body.
+        // If return type is not null,
+        // If contains return statement, return valid.
+        // Else, if contains conditional statement, (recursively?) check for returns in both then and else.
+
+        List <Statement> statements = block.getStatements();
+        //Check to see if first statement is a block statement
+        Statement first = statements.get(0);
+        if (first instanceof BlockStatement) {
+            BlockStatement nestedBlock = (BlockStatement) first;
+            validateReturn(nestedBlock, functionName);
+        }
+        else {
+            Boolean containsReturn = false;
+
+            for (Statement statement : statements) {
+                if (statement instanceof ReturnStatement) {
+                    containsReturn = true;
+                }
+            }
+
+            if (!containsReturn) {
+                //Check for Conditional
+                for (Statement statement : statements) {
+                    if (statement instanceof ConditionalStatement) {
+                        ConditionalStatement conditional = (ConditionalStatement) statement;
+                        containsReturn = validateConditionalReturn(conditional);
+                        if (!containsReturn) {
+                            System.out.println("Error!: Function '" + functionName + "' does not have valid return structure!");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean validateConditionalReturn(ConditionalStatement statement) {
+        boolean thenReturn = false, elseReturn = false;
+        Statement thenBlock = statement.getThenBlock();
+        Statement elseBlock = statement.getElseBlock();
+        int thenLineNum = -1, elseLineNum = -1;
+
+        if (thenBlock instanceof BlockStatement) {
+            BlockStatement tB = (BlockStatement) thenBlock;
+            thenReturn = validateConditionalBlock(tB);
+            thenLineNum = tB.getLineNum();
+        }
+
+        if (elseBlock instanceof BlockStatement) {
+            BlockStatement eB = (BlockStatement) elseBlock;
+            elseLineNum = eB.getLineNum();
+            //Empty else case
+            if (elseLineNum < 0) {
+                return thenReturn;
+            }
+            elseReturn = validateConditionalBlock(eB);
+        }
+
+        if (thenReturn && !elseReturn) {
+            System.out.println("Error! Line " + elseLineNum + ": Else block does not contain return statement when " +
+                    "preceding if block does!");
+        }
+        else if (!thenReturn && elseReturn) {
+            System.out.println("Error! Line " + thenLineNum + ": If block does not contain return statement when " +
+                    "following else block does!");
+        }
+
+        return (thenReturn && elseReturn);
+    }
+
+    private boolean validateConditionalBlock(BlockStatement block) {
+        List <Statement> statements = block.getStatements();
+        boolean containsReturn = false;
+
+        for (Statement statement : statements) {
+            if (statement instanceof ReturnStatement) {
+                containsReturn = true;
+            }
+        }
+
+        if (!containsReturn) {
+            for (Statement statement : statements) {
+                if (statement instanceof ConditionalStatement) {
+                    ConditionalStatement conditional = (ConditionalStatement) statement;
+                    boolean tmp = validateConditionalReturn(conditional);
+                    if (!containsReturn && tmp) {
+                        containsReturn = true;
+                    }
+                }
+            }
+        }
+
+        return containsReturn;
+     }
+
     private void checkBlockStatement(BlockStatement block, String functionName) {
         List <Statement> statements = block.getStatements();
-        Boolean standardReturn = false;
 
         for (Statement statement : statements) {
             //Invocation
