@@ -1,8 +1,6 @@
 package TypeChecker;
 
 import ast.*;
-import sun.jvm.hotspot.opto.Block;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -152,22 +150,25 @@ public class Checker {
     }
 
     private void validateReturn(BlockStatement block, String functionName) {
-        //TODO Check for standard vs. control flow case
-        //Check statements in body.
-        // If return type is not null,
-        // If contains return statement, return valid.
-        // Else, if contains conditional statement, (recursively?) check for returns in both then and else.
-
         List <Statement> statements = block.getStatements();
-        //Check to see if first statement is a block statement
+        Boolean containsReturn = false;
+
+        //Check to see if there is a return statement in list of statements
+        for (Statement statement : statements) {
+            if (statement instanceof ReturnStatement) {
+                containsReturn = true;
+            }
+        }
+
+        if (containsReturn) { return; }
+
+        //Otherwise, Check to see if first statement is a block statement
         Statement first = statements.get(0);
         if (first instanceof BlockStatement) {
             BlockStatement nestedBlock = (BlockStatement) first;
             validateReturn(nestedBlock, functionName);
         }
         else {
-            Boolean containsReturn = false;
-
             for (Statement statement : statements) {
                 if (statement instanceof ReturnStatement) {
                     containsReturn = true;
@@ -600,6 +601,9 @@ public class Checker {
                 }
             }
         }
+        else if (guardExp instanceof TrueExpression || guardExp instanceof FalseExpression) {
+            return;
+        }
         else {
             System.out.println("Non Binary expression in guard of Conditional");
         }
@@ -667,6 +671,18 @@ public class Checker {
         }
         else if (expression instanceof NullExpression) {
             return null;
+        }
+        else if (expression instanceof NewExpression) {
+            NewExpression newExpression = (NewExpression) expression;
+            String id = newExpression.getId();
+
+            if (structsMap.containsKey(id)) {
+                return new StructType(newExpression.getLineNum(), id);
+            }
+            else {
+                System.out.println("Error! Line " + newExpression.getLineNum() + ": Cannot create struct of type '"
+                        + id + "'! Struct not previously defined!");
+            }
         }
         else if (expression instanceof BinaryExpression) {
             BinaryExpression binaryExpression = (BinaryExpression) expression;

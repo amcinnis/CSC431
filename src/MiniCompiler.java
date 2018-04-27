@@ -1,8 +1,11 @@
+import CFG.CFGGenerator;
+import CFG.ControlFlowGraph;
 import TypeChecker.Checker;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 import java.io.*;
+import java.util.List;
 import javax.json.JsonValue;
 
 public class MiniCompiler
@@ -36,8 +39,16 @@ public class MiniCompiler
             new MiniToAstProgramVisitor();
          ast.Program program = programVisitor.visit(tree);
 
+         //Type Checking
          Checker checker = new Checker(program);
          checker.checkProgram();
+
+         //Build Control Flow Graphs
+         CFGGenerator generator = new CFGGenerator(program);
+         List<ControlFlowGraph> graphList = generator.generate();
+         for (ControlFlowGraph graph : graphList) {
+            graph.print();
+         }
       }
    }
 
