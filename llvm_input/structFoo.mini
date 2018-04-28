@@ -1,0 +1,11 @@
+struct simple
+{
+    int one;
+};
+
+struct foo
+{
+    int bar;
+    bool cool;
+    struct simple simp;
+};

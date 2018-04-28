@@ -10,6 +10,6 @@ public class CFGNode extends AbstractCFGNode {
 
     public CFGNode(String label) {
         super(label);
-        instructions = new ArrayList<String>();
+        instructions = new ArrayList<>();
     }
 }

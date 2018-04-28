@@ -2,7 +2,7 @@ package CFG;
 
 public abstract class AbstractCFGNode implements Node {
 
-    private String label;{}
+    private String label;
 
     public AbstractCFGNode(String label) {
         this.label = label;

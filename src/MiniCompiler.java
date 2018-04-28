@@ -49,6 +49,7 @@ public class MiniCompiler
          for (ControlFlowGraph graph : graphList) {
             graph.print();
          }
+
       }
    }
 

@@ -165,7 +165,6 @@ public class CFGGenerator {
 
         //Traverse then block
         Node thenEnd = processBlock(thenBlock, newNode);
-        //TODO: If nested nodes in block, which node is returned from processBlock?
 
         //Traverse else block
         Node elseEnd = processBlock(elseBlock, newNode);
