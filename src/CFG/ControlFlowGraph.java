@@ -10,7 +10,6 @@ public class ControlFlowGraph {
 
     public ControlFlowGraph(String functionName) {
         this.functionName = functionName;
-        this.entry = new CFGNode("entry");
     }
 
     public void print() {

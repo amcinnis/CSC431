@@ -5,11 +5,14 @@ import java.util.List;
 
 public class CFGNode extends AbstractCFGNode {
 
-    public List <String> instructions;
+    public List <String> miniStatements;
+    public List <String> llvmInstructions;
+
     public Node next;
 
     public CFGNode(String label) {
         super(label);
-        instructions = new ArrayList<>();
+        miniStatements = new ArrayList<>();
+        llvmInstructions = new ArrayList<>();
     }
 }

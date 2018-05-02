@@ -10,4 +10,8 @@ public class IntegerExpression
       super(lineNum);
       this.value = value;
    }
+
+   public String getValue() {
+      return value;
+   }
 }

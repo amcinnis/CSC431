@@ -1,7 +1,10 @@
 package CFG;
 
+import LLVM.CompareInstruction;
+import LLVM.Immediate;
+import LLVM.Instruction;
+import LLVM.LoadInstruction;
 import ast.*;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,39 +13,162 @@ public class CFGGenerator {
     private Program program;
     private int labelCount;
     private int joinCount;
+    private int registerCount;
     private CFGNode graphEntry;
+    private List<String> globalInstructions;
+    private Function currentFunction;
+    private List<String> allocationLLVM;
 
     public CFGGenerator(Program program) {
         this.program = program;
-        this.labelCount = 1;
-        this.joinCount = 1;
+        this.labelCount = 0;
+        this.joinCount = 0;
+        this.registerCount = 0;
         this.graphEntry = null;
+        this.globalInstructions = new ArrayList<>();
+        this.currentFunction = null;
+        this.allocationLLVM = new ArrayList<>();
     }
 
     public List<ControlFlowGraph> generate() {
-        List <ControlFlowGraph> graphs = new ArrayList<ControlFlowGraph>();
+        List <ControlFlowGraph> graphs = new ArrayList<>();
+
+        //Generate global miniStatements
+        List<TypeDeclaration> structs = program.getTypes();
+        List<Declaration> globals = program.getDecls();
+        generateGlobalInstructions(structs, globals);
 
         //For each function in program, generate a CFG.
         for (Function function : program.getFuncs()) {
+            this.currentFunction = function;
             graphs.add(generateCFG(function));
             graphEntry = null;
+            allocationLLVM.clear();
         }
 
         return graphs;
+    }
+
+    private void generateGlobalInstructions(List<TypeDeclaration> structs, List<Declaration> globals) {
+
+        //Generate 32bit architecture instruction
+        this.globalInstructions.add("target triple=\"i686\"");
+
+        //Generate struct definition miniStatements
+        generateGlobalStructs(structs);
+
+        //Generate global variable miniStatements
+        generateGlobalDeclarations(globals);
+    }
+
+    private void generateGlobalDeclarations(List<Declaration> globals) {
+
+        StringBuilder instruction;
+
+        for (Declaration global : globals) {
+            instruction = new StringBuilder("@");
+
+            String name = global.getName();
+            Type type = global.getType();
+            if (type instanceof StructType) {
+                String typeName = ((StructType) type).getName();
+                instruction.append(name + " = common global %struct." + typeName + "* null, align 8");
+            }
+            //TODO: Make function more robust to handle Ints and Bools
+
+            this.globalInstructions.add(instruction.toString());
+        }
+    }
+
+    private void generateGlobalStructs(List<TypeDeclaration> structs) {
+
+        List<Declaration> fields;
+        StringBuilder instruction;
+
+        for (TypeDeclaration struct : structs) {
+            instruction = new StringBuilder("%struct.");
+            instruction.append(struct.getName() + " = type ");
+
+            fields = struct.getFields();
+            instruction.append("{");
+            List<String> typesList = new ArrayList<>();
+            for (Declaration field : fields) {
+                Type type = field.getType();
+                if (type instanceof IntType || type instanceof BoolType) {
+                    typesList.add("i32");
+                }
+                else if (type instanceof StructType) {
+                    String name = ((StructType) type).getName();
+                    typesList.add("%struct." + name + "*");
+                }
+            }
+            instruction.append(String.join(", ", typesList) + "}");
+            this.globalInstructions.add(instruction.toString());
+        }
     }
 
     private ControlFlowGraph generateCFG(Function function) {
         String functionName = function.getName();
         ControlFlowGraph graph = new ControlFlowGraph(functionName);
 
-        //Process Function Body
+        //Generate Entry and Exit nodes
+        CFGNode exit = new CFGNode(newLabel());
+        graph.entry = new CFGNode(newLabel());
+
+        //Get function body
         BlockStatement body = (BlockStatement) function.getBody();
         List <Statement> statements = body.getStatements();
 
-        //Check to see if need to build first CFGNode
+        //Create references to entry node
         graphEntry = graph.entry;
         Node current = graph.entry;
-//        current = checkForNewCFG(statements, current);
+
+        //Generate function declaration in LLVM
+        List <Declaration> params = function.getParams();
+        Type returnType = function.getRetType();
+        StringBuilder declaration = new StringBuilder("define " + typeToLLVM(returnType) + " @");
+        List <String> llvmParams = new ArrayList<>();
+
+        declaration.append(functionName + "(");
+        for (Declaration param : params) {
+            Type paramType = param.getType();
+            String name = param.getName();
+            if (paramType instanceof IntType || paramType instanceof BoolType) {
+                llvmParams.add("i32 %" + name);
+                allocationLLVM.add("%_P_" + name + " = alloca i32");
+                allocationLLVM.add("store i32 %" + name + ", i32* %_P_" + name);
+            }
+            else if (paramType instanceof StructType) {
+                StructType structType = (StructType)paramType;
+                llvmParams.add("%struct." + structType.getName() + "* %" + name);
+                allocationLLVM.add("IMPLEMENT STRUCT ALLOCATION LLVM");
+                allocationLLVM.add("IMPLEMENT STRUCT STORE LLVM");
+            }
+            //llvmParams.add(getLLVMType(paramType));
+        }
+        declaration.append(String.join(", ", llvmParams) + ") ");
+
+        //Add function declaration and opening brace to entry node
+        graphEntry.llvmInstructions.add(declaration.toString());
+        graphEntry.llvmInstructions.add("{");
+
+        //Generate LLVM for function params and locals
+        List <Declaration> locals = function.getLocals();
+        StringBuilder localInstruction;
+        Type localType;
+        for (Declaration local : locals) {
+            localType = local.getType();
+            localInstruction = new StringBuilder("%" + local.getName() + " = alloca ");
+            if (localType instanceof IntType || localType instanceof BoolType) {
+                localInstruction.append("i32");
+            }
+            else if (localType instanceof StructType) {
+                StructType structType = (StructType)localType;
+                localInstruction.append("%struct." + structType.getName() + "*");
+            }
+            allocationLLVM.add(localInstruction.toString());
+        }
+        graphEntry.llvmInstructions.addAll(allocationLLVM);
 
         //Iterate through all statements
         for (Statement statement : statements) {
@@ -50,7 +176,7 @@ public class CFGGenerator {
         }
 
         if (current instanceof CFGNode) {
-            ((CFGNode) current).next = new CFGNode("exit");
+            ((CFGNode) current).next = exit;
         }
 
         return graph;
@@ -120,7 +246,7 @@ public class CFGGenerator {
             //add instruction to list
             //continue
             String instruction = getInstruction(statement);
-            ((CFGNode)current).instructions.add(instruction);
+            ((CFGNode)current).miniStatements.add(instruction);
         }
 
         return current;
@@ -234,6 +360,104 @@ public class CFGGenerator {
         return current;
     }
 
+    private List<String> generateConditionalLLVM(Expression guard) {
+        List<String> instructions = new ArrayList<>();
+
+        if (guard instanceof BinaryExpression) {
+            BinaryExpression binaryExpression = (BinaryExpression)guard;
+            Expression left = binaryExpression.getLeft();
+            Expression right = binaryExpression.getRight();
+            BinaryExpression.Operator operator = binaryExpression.getOperator();
+
+            Instruction leftInstruction = getExpressionLLVM(left);
+            Instruction rightInstruction = getExpressionLLVM(right);
+
+            String operand1 = getOperandValue(leftInstruction);
+            String operand2 = getOperandValue(rightInstruction);
+
+            //TODO: edit return value of getOperandValue to include type for compare instruction
+            CompareInstruction compare = new CompareInstruction(newRegLabel(), );
+
+        }
+        else if (guard instanceof TrueExpression) {
+
+        }
+        else if (guard instanceof FalseExpression) {
+
+        }
+        else {
+            System.out.println("generateConditionalLLVM encountered guard not yet accounted for!");
+        }
+
+        return instructions;
+    }
+
+    private Instruction getExpressionLLVM(Expression expression) {
+
+        if (expression instanceof IdentifierExpression) {
+            IdentifierExpression identifierExpression = (IdentifierExpression)expression;
+            String id = identifierExpression.getId();
+            return identifierLookup(id);
+        }
+        else if (expression instanceof IntegerExpression) {
+            IntegerExpression integerExpression = (IntegerExpression)expression;
+            return new Immediate(integerExpression.getValue());
+        }
+        else {
+            System.out.println("Encountered unaccounted for Expression in getEspressionLLVM!");
+            return null;
+        }
+    }
+
+    private String getOperandValue(Instruction instruction) {
+        if (instruction instanceof LoadInstruction) {
+            LoadInstruction loadInstruction = (LoadInstruction)instruction;
+            return loadInstruction.getResult();
+        }
+        else if (instruction instanceof Immediate) {
+            Immediate immediate = (Immediate)instruction;
+            return immediate.getValue();
+        }
+        else {
+            System.out.println("Unaccounted for Instruction in getOperandValue!");
+            return null;
+        }
+    }
+
+    private LoadInstruction identifierLookup(String id) {
+        //Check local scope
+        List<Declaration> locals = currentFunction.getLocals();
+        for (Declaration local : locals) {
+            if (id.equals(local.getName())) {
+                Type type = local.getType();
+                //TODO: Fix type pointer to also accomodate structs
+                return new LoadInstruction(newRegLabel(), typeToLLVM(type) + "*", "%" + id);
+            }
+        }
+
+        //Check function parameters
+        List<Declaration> params = currentFunction.getParams();
+        for (Declaration param : params) {
+            if (id.equals(param.getName())) {
+                Type type = param.getType();
+                return new LoadInstruction(newRegLabel(), typeToLLVM(type) + "*", "%_P_" + id);
+            }
+        }
+
+        //Check global scope
+        List<Declaration> globals = this.program.getDecls();
+        for (Declaration global : globals) {
+            if (id.equals(global.getName())) {
+                Type type = global.getType();
+                return new LoadInstruction(newRegLabel(), typeToLLVM(type) + "*", "@" + id);
+            }
+        }
+
+        System.out.println("Error! Cannot lookup value of identifier '" + id "'!");
+
+        return null;
+    }
+
     private String getInstruction(Statement statement) {
         if (statement instanceof BlockStatement) {
             return "Block Statement";
@@ -270,5 +494,25 @@ public class CFGGenerator {
 
     private String newJoinLabel() {
         return "JN" + Integer.toString(joinCount++);
+    }
+
+    private String newRegLabel() {
+        return "%u" + Integer.toString(registerCount++);
+    }
+
+    private String typeToLLVM(Type type) {
+        if (type instanceof IntType || type instanceof BoolType) {
+            return "i32";
+        }
+        else if (type instanceof StructType) {
+            return "STRUCT?";
+        }
+        else if (type instanceof VoidType) {
+            return "void";
+        }
+        else {
+            System.out.println("typeToLLVM found type yet to be accounted for!");
+            return null;
+        }
     }
 }

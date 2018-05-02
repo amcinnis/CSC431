@@ -641,7 +641,7 @@ public class Checker {
             String name = invocationExpression.getName();
 
             //Find function return type in functions HashMap
-            Function function = getFunction(functionName, invocationExpression.getLineNum());
+            Function function = getFunction(name, invocationExpression.getLineNum());
             if (function != null) {
                 return function.getRetType();
             }
@@ -734,6 +734,9 @@ public class Checker {
                     }
                 }
             }
+        }
+        else if (expression instanceof ReadExpression) {
+            return new IntType();
         }
         else {
             System.out.println("Unaccounted for Expression in getExpressionType!");
