@@ -14,6 +14,6 @@ public class ConditionalBranchInstruction extends AbstractInstruction {
 
     @Override
     public String toString() {
-        return "br i1 " + condition + ", label " + thenLabel + ", label " + elseLabel + "\n";
+        return "\tbr i1 " + condition + ", label %" + thenLabel + ", label %" + elseLabel + "\n";
     }
 }

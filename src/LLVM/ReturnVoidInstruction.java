@@ -8,6 +8,6 @@ public class ReturnVoidInstruction extends AbstractInstruction {
 
     @Override
     public String toString() {
-        return "ret void\n";
+        return "\tret void\n";
     }
 }

@@ -14,6 +14,6 @@ public class StoreInstruction extends AbstractInstruction {
 
     @Override
     public String toString() {
-        return "store " + type + " " + value + ", " + type + "* " + "%" + pointer + "\n";
+        return "\tstore " + type + " " + value + ", " + type + "* " + "%" + pointer + "\n";
     }
 }

@@ -16,6 +16,6 @@ public class CompareInstruction extends ResultingInstruction {
 
     @Override
     public String toString() {
-        return getResult() + " = icmp " + conditionCode + " " + this.getType() + " " + operand1 + ", " + operand2 + "\n";
+        return "\t" + getResult() + " = icmp " + conditionCode + " " + this.getType() + " " + operand1 + ", " + operand2 + "\n";
     }
 }

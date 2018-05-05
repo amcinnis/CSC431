@@ -10,6 +10,6 @@ public class UnconditionalBranchInstruction extends AbstractInstruction {
 
     @Override
     public String toString() {
-        return "br label %" + destination + "\n";
+        return "\tbr label %" + destination + "\n";
     }
 }

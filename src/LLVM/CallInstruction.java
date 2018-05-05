@@ -26,10 +26,10 @@ public class CallInstruction extends ResultingInstruction {
         String args = String.join(", ", functionArgs);
         String result = this.getResult();
         if (result == null) {
-            return "call " + this.getType() + " " + functionPointer + " (" + args + ")";
+            return "\tcall " + this.getType() + " " + functionPointer + " (" + args + ")\n";
         }
         else {
-            return this.getResult() + " = call " + this.getType() + " " + functionPointer + "(" + args + ")\n";
+            return "\t" + this.getResult() + " = call " + this.getType() + " " + functionPointer + "(" + args + ")\n";
         }
     }
 }

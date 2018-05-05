@@ -60,8 +60,6 @@ public class CFGGenerator {
                 graphs.add(generateCFG(function));
                 graphEntry = null;
                 allocationLLVM.clear();
-                fileWriter.close();
-                break;
             }
 
             //Print CFGs
@@ -69,7 +67,13 @@ public class CFGGenerator {
                 graph.print();
             }
 
-//            fileWriter.close();
+            //Write LLVM to file
+            LLVMGenerator generator = new LLVMGenerator(fileWriter);
+            for (ControlFlowGraph graph : graphs) {
+                generator.generate(graph);
+            }
+
+            fileWriter.close();
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -162,10 +166,14 @@ public class CFGGenerator {
 
         //Generate Entry and Exit nodes
         graphExit = new CFGNode(newLabel());
-        //Generate LLVM for void return type
-        if (function.getRetType() instanceof VoidType) {
+        //Generate LLVM for return type
+        Type returnType = function.getRetType();
+        if (returnType instanceof VoidType) {
             ReturnVoidInstruction returnVoidInstruction = new ReturnVoidInstruction();
             graphExit.llvmInstructions.add(returnVoidInstruction.toString());
+        }
+        else {
+            //Allocate space on stack for return value
         }
         graph.entry = new CFGNode(newLabel());
 
@@ -224,9 +232,6 @@ public class CFGGenerator {
         }
         graphEntry.llvmInstructions.addAll(allocationLLVM);
 
-        //write LLVM instructions to file
-        writeLLVM(graphEntry.llvmInstructions);
-
         //Iterate through all statements
         for (Statement statement : statements) {
             current = processStatement(statement, current);
@@ -238,18 +243,10 @@ public class CFGGenerator {
 
         if (current instanceof CFGNode) {
             ((CFGNode) current).next = graphExit;
+            graphExit.llvmInstructions.add("}\n");
         }
 
         return graph;
-    }
-
-    private void writeLLVM(List<String> instructions) {
-        try {
-            for (String instruction : instructions) {
-                fileWriter.write(instruction);
-            }
-        }
-        catch (IOException e) { e.printStackTrace(); }
     }
 
     private Node processStatement(Statement statement, Node current) {
@@ -283,7 +280,6 @@ public class CFGGenerator {
             }
             else if (current instanceof ConditionalCFGNode) {
                 ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
-                writeLLVM(conditionalNode.llvmInstructions);
                 if (conditionalNode.thenNode == null) {
                     CFGNode newNode = new CFGNode(newLabel());
                     conditionalNode.thenNode = newNode;
@@ -337,7 +333,8 @@ public class CFGGenerator {
 
         //CFG
         if (current instanceof CFGNode) {
-            ((CFGNode) current).next = newNode;
+            CFGNode cfgNode = (CFGNode)current;
+            cfgNode.next = newNode;
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
@@ -405,12 +402,10 @@ public class CFGGenerator {
 
         if (current instanceof CFGNode) {
             CFGNode cfgNode = (CFGNode)current;
-            writeLLVM(cfgNode.llvmInstructions);
             ((CFGNode) current).next = newNode;
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
-            writeLLVM(conditionalNode.llvmInstructions);
             if (conditionalNode.thenNode == null) {
                 conditionalNode.thenNode = newNode;
             }

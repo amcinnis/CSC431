@@ -21,6 +21,6 @@ public class BitcastInstruction extends ResultingInstruction {
 
     @Override
     public String toString() {
-        return this.getResult() + " = bitcast " + oldType + " " + value + " to " + this.getType() + "\n";
+        return "\t" + this.getResult() + " = bitcast " + oldType + " " + value + " to " + this.getType() + "\n";
     }
 }

@@ -8,7 +8,7 @@ public class SubtractInstruction extends BinaryInstruction {
 
     @Override
     public String toString() {
-        return this.getResult() + " = sub " + this.getType() + " " + this.getOperand1() + ", "
+        return "\t" + this.getResult() + " = sub " + this.getType() + " " + this.getOperand1() + ", "
                 + this.getOperand2() + "\n";
     }
 }
