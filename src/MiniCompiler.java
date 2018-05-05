@@ -44,12 +44,8 @@ public class MiniCompiler
          checker.checkProgram();
 
          //Build Control Flow Graphs
-         CFGGenerator generator = new CFGGenerator(program);
-         List<ControlFlowGraph> graphList = generator.generate();
-         for (ControlFlowGraph graph : graphList) {
-            graph.print();
-         }
-
+         CFGGenerator generator = new CFGGenerator(_inputFile, program);
+         File llvmFile = generator.generate();
       }
    }
 

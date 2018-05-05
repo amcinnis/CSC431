@@ -1,6 +1,8 @@
 package CFG;
 
 import ast.Expression;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConditionalCFGNode extends AbstractCFGNode {
@@ -13,5 +15,6 @@ public class ConditionalCFGNode extends AbstractCFGNode {
     public ConditionalCFGNode(String label, Expression guard) {
         super(label);
         this.guard = guard;
+        this.llvmInstructions = new ArrayList<>();
     }
 }

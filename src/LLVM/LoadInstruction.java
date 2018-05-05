@@ -2,12 +2,19 @@ package LLVM;
 
 public class LoadInstruction extends ResultingInstruction {
 
-    private String type;
     private String pointer;
 
     public LoadInstruction(String result, String type, String pointer) {
-        super(result);
-        this.type = type;
+        super(result, type);
         this.pointer = pointer;
+    }
+
+    public String getPointer() {
+        return pointer;
+    }
+
+    @Override
+    public String toString() {
+        return this.getResult() + " = load " + this.getType() + " " + pointer + "\n";
     }
 }

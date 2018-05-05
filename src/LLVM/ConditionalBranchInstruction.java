@@ -11,4 +11,9 @@ public class ConditionalBranchInstruction extends AbstractInstruction {
         this.thenLabel = thenLabel;
         this.elseLabel = elseLabel;
     }
+
+    @Override
+    public String toString() {
+        return "br i1 " + condition + ", label " + thenLabel + ", label " + elseLabel + "\n";
+    }
 }

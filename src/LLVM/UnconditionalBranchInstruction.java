@@ -2,9 +2,14 @@ package LLVM;
 
 public class UnconditionalBranchInstruction extends AbstractInstruction {
 
-    private String label;
+    private String destination;
 
-    public UnconditionalBranchInstruction(String label) {
-        this.label = label;
+    public UnconditionalBranchInstruction(String destination) {
+        this.destination = destination;
+    }
+
+    @Override
+    public String toString() {
+        return "br label %" + destination + "\n";
     }
 }

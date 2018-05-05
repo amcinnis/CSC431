@@ -11,4 +11,9 @@ public class StoreInstruction extends AbstractInstruction {
         this.value = value;
         this.pointer = pointer;
     }
+
+    @Override
+    public String toString() {
+        return "store " + type + " " + value + ", " + type + "* " + "%" + pointer + "\n";
+    }
 }
