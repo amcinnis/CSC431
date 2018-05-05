@@ -9,4 +9,9 @@ public class ReturnInstruction extends AbstractInstruction {
         this.type = type;
         this.value = value;
     }
+
+    @Override
+    public String toString() {
+        return "\tret " + type + " " + value + "\n";
+    }
 }

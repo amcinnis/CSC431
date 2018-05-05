@@ -12,8 +12,20 @@ public class StoreInstruction extends AbstractInstruction {
         this.pointer = pointer;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public String getPointer() {
+        return pointer;
+    }
+
     @Override
     public String toString() {
-        return "\tstore " + type + " " + value + ", " + type + "* " + "%" + pointer + "\n";
+        return "\tstore " + type + " " + value + ", " + type + "* " + pointer + "\n";
     }
 }

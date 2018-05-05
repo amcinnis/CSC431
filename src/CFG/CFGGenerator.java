@@ -22,7 +22,6 @@ public class CFGGenerator {
     private CFGNode graphExit;
     private List<String> globalInstructions;
     private Function currentFunction;
-    private List<String> allocationLLVM;
     private String inputFile;
     private FileWriter fileWriter;
 
@@ -35,7 +34,6 @@ public class CFGGenerator {
         this.graphExit = null;
         this.globalInstructions = new ArrayList<>();
         this.currentFunction = null;
-        this.allocationLLVM = new ArrayList<>();
         this.inputFile = inputFile;
         this.fileWriter = null;
     }
@@ -59,7 +57,7 @@ public class CFGGenerator {
                 this.currentFunction = function;
                 graphs.add(generateCFG(function));
                 graphEntry = null;
-                allocationLLVM.clear();
+                break;
             }
 
             //Print CFGs
@@ -166,15 +164,6 @@ public class CFGGenerator {
 
         //Generate Entry and Exit nodes
         graphExit = new CFGNode(newLabel());
-        //Generate LLVM for return type
-        Type returnType = function.getRetType();
-        if (returnType instanceof VoidType) {
-            ReturnVoidInstruction returnVoidInstruction = new ReturnVoidInstruction();
-            graphExit.llvmInstructions.add(returnVoidInstruction.toString());
-        }
-        else {
-            //Allocate space on stack for return value
-        }
         graph.entry = new CFGNode(newLabel());
 
         //Get function body
@@ -186,64 +175,120 @@ public class CFGGenerator {
         Node current = graph.entry;
 
         //Generate function declaration in LLVM
-        List <Declaration> params = function.getParams();
         Type returnType = function.getRetType();
+        List <Declaration> params = function.getParams();
         StringBuilder declaration = new StringBuilder("define " + typeToLLVM(returnType) + " @");
-        List <String> llvmParams = new ArrayList<>();
-
         declaration.append(functionName + "(");
+
+        //Generate LLVM for parameters
+        List <String> llvmParams = new ArrayList<>();
+        List <Instruction> allocateLLVM = new ArrayList<>();
         for (Declaration param : params) {
             Type paramType = param.getType();
             String name = param.getName();
             if (paramType instanceof IntType || paramType instanceof BoolType) {
                 llvmParams.add("i32 %" + name);
-                allocationLLVM.add("\t%_P_" + name + " = alloca i32\n");
-                allocationLLVM.add("\tstore i32 %" + name + ", i32* %_P_" + name + "\n");
+                AllocateInstruction paramAlloc = new AllocateInstruction("%_P_" + name, "i32");
+                allocateLLVM.add(paramAlloc);
+                StoreInstruction paramStore = new StoreInstruction("i32", "%" + name, "%_P_" + name);
+                allocateLLVM.add(paramStore);
             }
             else if (paramType instanceof StructType) {
                 StructType structType = (StructType)paramType;
                 llvmParams.add("%struct." + structType.getName() + "* %" + name);
-                allocationLLVM.add("IMPLEMENT STRUCT ALLOCATION LLVM");
-                allocationLLVM.add("IMPLEMENT STRUCT STORE LLVM");
+                System.out.println("Time to create alloca instructions for struct parameters!");
+//                graphEntry.llvmStrings.add("IMPLEMENT STRUCT ALLOCATION LLVM");
+//                graphEntry.llvmStrings.add("IMPLEMENT STRUCT STORE LLVM");
             }
         }
         declaration.append(String.join(", ", llvmParams) + ") ");
 
         //Add function declaration and opening brace to entry node
-        graphEntry.llvmInstructions.add(declaration.toString() + "\n");
-        graphEntry.llvmInstructions.add("{\n");
-        graphEntry.llvmInstructions.add(graphEntry.getLabel() + ":\n");
+        graphEntry.llvmStrings.add(declaration.toString() + "\n");
+        graphEntry.llvmStrings.add("{\n");
+        graphEntry.llvmStrings.add(graphEntry.getLabel() + ":\n");
 
-        //Generate LLVM for function params and locals
+        //Generate LLVM for return type
+        if (returnType instanceof VoidType) {
+            ReturnVoidInstruction returnVoidInstruction = new ReturnVoidInstruction();
+            graphExit.llvmInstructions.add(returnVoidInstruction);
+            graphExit.llvmStrings.add(returnVoidInstruction.toString());
+        }
+        else {
+            //Allocate space on stack for return value
+            String retTypeString = null;
+            if (returnType instanceof IntType || returnType instanceof BoolType) {
+                retTypeString = "i32";
+            }
+            else {
+                retTypeString = "STRUCTTT";
+            }
+            AllocateInstruction returnAllocateInstruction = new AllocateInstruction("%_retval_", retTypeString);
+            graphEntry.llvmInstructions.add(returnAllocateInstruction);
+            graphEntry.llvmStrings.add(returnAllocateInstruction.toString());
+        }
+
+        //Grab previously stored instructions and write them to entry node
+        graphEntry.llvmInstructions.addAll(allocateLLVM);
+        List<String> paramStrings = allocateLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
+        graphEntry.llvmStrings.addAll(paramStrings);
+
+        //Generate LLVM for local variables
         List <Declaration> locals = function.getLocals();
-        StringBuilder localInstruction;
         Type localType;
         for (Declaration local : locals) {
+            AllocateInstruction allocateInstruction = null;
             localType = local.getType();
-            localInstruction = new StringBuilder("\t%" + local.getName() + " = alloca ");
             if (localType instanceof IntType || localType instanceof BoolType) {
-                localInstruction.append("i32");
+                allocateInstruction = new AllocateInstruction("%" + local.getName(), "i32");
             }
             else if (localType instanceof StructType) {
                 StructType structType = (StructType)localType;
-                localInstruction.append("%struct." + structType.getName() + "*");
+                allocateInstruction = new AllocateInstruction("%" + local.getName(),
+                        "%struct." + structType.getName() + "*");
             }
-            allocationLLVM.add(localInstruction.toString() + "\n");
+            else {
+                System.out.println("Error! Reached VoidType when generating local variables LLVM!");
+            }
+            graphEntry.llvmInstructions.add(allocateInstruction);
+            graphEntry.llvmStrings.add(allocateInstruction.toString());
         }
-        graphEntry.llvmInstructions.addAll(allocationLLVM);
 
         //Iterate through all statements
         for (Statement statement : statements) {
             current = processStatement(statement, current);
         }
 
+        //Store return value to _retval_ if non-void function
+        if (!(returnType instanceof VoidType)) {
+            if (current instanceof CFGNode) {
+                CFGNode returnNode = (CFGNode)current;
+                List<Instruction> llvmInstructions = returnNode.llvmInstructions;
+                ResultingInstruction resultingInstruction =
+                        (ResultingInstruction)llvmInstructions.get(llvmInstructions.size()-1);
+                String result = resultingInstruction.getResult();
+                StoreInstruction storeResult = new StoreInstruction(resultingInstruction.getType(),
+                        result, "_retval_");
+                returnNode.llvmInstructions.add(storeResult);
+                returnNode.llvmStrings.add(storeResult.toString());
+
+                //Load return value in exit node
+                LoadInstruction load = new LoadInstruction(newRegLabel(), storeResult.getType(), "_retval_");
+                graphExit.llvmInstructions.add(load);
+                graphExit.llvmStrings.add(load.toString());
+                ReturnInstruction ret = new ReturnInstruction(load.getType(), load.getResult());
+                graphExit.llvmInstructions.add(ret);
+                graphExit.llvmStrings.add(ret.toString());
+            }
+        }
+
         //Unconditional Branch to exit node
         UnconditionalBranchInstruction finalBranch = new UnconditionalBranchInstruction(graphExit.getLabel());
-        ((CFGNode)current).llvmInstructions.add(finalBranch.toString());
+        ((CFGNode)current).llvmStrings.add(finalBranch.toString());
 
         if (current instanceof CFGNode) {
             ((CFGNode) current).next = graphExit;
-            graphExit.llvmInstructions.add("}\n");
+            graphExit.llvmStrings.add("}\n");
         }
 
         return graph;
@@ -316,8 +361,9 @@ public class CFGGenerator {
             ((CFGNode)current).miniStatements.add(miniString);
             //Generate LLVM for instruction
             List<Instruction> instructions = generateLLVMInstruction(statement);
+            ((CFGNode)current).llvmInstructions.addAll(instructions);
             List<String> llvmStrings = instructions.stream().map(Instruction::toString).collect(Collectors.toList());
-            ((CFGNode)current).llvmInstructions.addAll(llvmStrings);
+            ((CFGNode)current).llvmStrings.addAll(llvmStrings);
         }
 
         return current;
@@ -453,6 +499,11 @@ public class CFGGenerator {
             UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(this.graphExit.getLabel());
             instructions.add(branch);
         }
+        else if (statement instanceof ReturnStatement) {
+            ReturnStatement returnStatement = (ReturnStatement)statement;
+            Expression expression = returnStatement.getExpression();
+            instructions = generateLLVMFromExpression(expression);
+        }
         else if (statement instanceof AssignmentStatement) {
             AssignmentStatement assignmentStatement = (AssignmentStatement)statement;
             //Evaluate Assignment Source
@@ -464,6 +515,7 @@ public class CFGGenerator {
             if (target instanceof LvalueId) {
                 LvalueId left = (LvalueId)target;
                 BitcastInstruction bitcast = (BitcastInstruction)sourceInstructions.get(sourceInstructions.size() - 1);
+                //TODO: Create function like identifierLookup to return StoreInstruction with proper variable prefixes (%, %_P_, @)
                 StoreInstruction storeInstruction = new StoreInstruction(bitcast.getType(), bitcast.getResult(), left.getId());
                 instructions.add(storeInstruction);
             }
@@ -499,12 +551,10 @@ public class CFGGenerator {
 
             //Generate LLVM instructions
             if (leftInstruction instanceof LoadInstruction) {
-                LoadInstruction loadInstruction = (LoadInstruction)leftInstruction;
-                instructions.add(loadInstruction);
+                instructions.add(leftInstruction);
             }
             if (rightInstruction instanceof LoadInstruction) {
-                LoadInstruction loadInstruction = (LoadInstruction)rightInstruction;
-                instructions.add(loadInstruction);
+                instructions.add(rightInstruction);
             }
 
             Instruction opInstruction = generateBinaryOperatorLLVM(operator, operand1, operand2);

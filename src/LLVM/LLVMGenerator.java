@@ -27,7 +27,7 @@ public class LLVMGenerator {
         if (node instanceof CFGNode) {
             CFGNode current = (CFGNode)node;
             printNodeLabel(current);
-            printNodeLLVM(current.llvmInstructions);
+            printNodeLLVM(current.llvmStrings);
             printNode(current.next);
         }
         else if (node instanceof ConditionalCFGNode) {
