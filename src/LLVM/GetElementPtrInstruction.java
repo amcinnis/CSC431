@@ -10,4 +10,10 @@ public class GetElementPtrInstruction extends ResultingInstruction {
         this.pointerValue = pointerValue;
         this.index = index;
     }
+
+    @Override
+    public String toString() {
+        return "\t" + this.getResult() + " = getelementptr " + this.getType() + " " + pointerValue +
+                ", i1 0, i32 " + index + "\n";
+    }
 }

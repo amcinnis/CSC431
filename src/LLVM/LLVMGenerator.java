@@ -32,7 +32,7 @@ public class LLVMGenerator {
         }
         else if (node instanceof ConditionalCFGNode) {
             ConditionalCFGNode current = (ConditionalCFGNode)node;
-            printNodeLLVM(current.llvmInstructions);
+            printNodeLLVM(current.llvmStrings);
 
             Node thenNode = current.thenNode;
             if (printNodeLabel(thenNode)) {
@@ -48,7 +48,18 @@ public class LLVMGenerator {
         }
         else if (node instanceof WhileCFGNode) {
             WhileCFGNode current = (WhileCFGNode)node;
+            printNodeLabel(current);
+            printNodeLLVM(current.llvmStrings);
 
+            Node body = current.body;
+            if (printNodeLabel(body)) {
+                printNode(body);
+            }
+
+            Node next = current.next;
+            if (printNodeLabel(next)) {
+                printNode(next);
+            }
         }
     }
 
