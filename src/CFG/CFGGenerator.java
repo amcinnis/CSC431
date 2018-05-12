@@ -74,6 +74,9 @@ public class CFGGenerator {
                 generator.generate(graph);
             }
 
+            //Footer Instructions
+            generator.printFooterInstructions();
+
             fileWriter.close();
         }
         catch (IOException e) {
@@ -202,8 +205,6 @@ public class CFGGenerator {
                 StructType structType = (StructType)paramType;
                 llvmParams.add("%struct." + structType.getName() + "* %" + name);
                 System.out.println("Time to create alloca instructions for struct parameters!");
-//                graphEntry.llvmStrings.add("IMPLEMENT STRUCT ALLOCATION LLVM");
-//                graphEntry.llvmStrings.add("IMPLEMENT STRUCT STORE LLVM");
             }
         }
         declaration.append(String.join(", ", llvmParams) + ") ");

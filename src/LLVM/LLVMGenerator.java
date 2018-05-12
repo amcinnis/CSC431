@@ -96,6 +96,7 @@ public class LLVMGenerator {
                 return false;
             }
             else {
+                if (label.equals("Footer")) { return true; }
                 try {
                     System.out.print(label + ":\n");
                     this.writer.write(label + ":\n");
@@ -112,5 +113,18 @@ public class LLVMGenerator {
 
             return false;
         }
+    }
+
+    public void printFooterInstructions() {
+        CFGNode node = new CFGNode("Footer");
+        node.llvmStrings.add("declare i8* @malloc(i32)\n");
+        node.llvmStrings.add("declare void @free(i8*)\n");
+        node.llvmStrings.add("declare i32 @printf(i8*, ...)\n");
+        node.llvmStrings.add("declare i32 @scanf(i8*, ...)\n");
+        node.llvmStrings.add("@.println = private unnamed_addr constant [5 x i8] c\"%ld\\0A\\00\", align 1\n");
+        node.llvmStrings.add("@.print = private unnamed_addr constant [5 x i8] c\"%ld \\00\", align 1\n");
+        node.llvmStrings.add("@.read = private unnamed_addr constant [4 x i8] c\"%ld\\00\", align 1\n");
+        node.llvmStrings.add("@.read_scratch = common global i32 0, align 8\n");
+        printNode(node);
     }
 }
