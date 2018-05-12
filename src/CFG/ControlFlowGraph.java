@@ -7,6 +7,7 @@ public class ControlFlowGraph {
 
     private String functionName;
     public CFGNode entry;
+    public CFGNode exit;
 
     public ControlFlowGraph(String functionName) {
         this.functionName = functionName;

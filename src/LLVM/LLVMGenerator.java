@@ -11,6 +11,8 @@ public class LLVMGenerator {
 
     FileWriter writer;
     List<String> visitedNodes;
+    CFGNode graphExit;
+    boolean printExit;
 
     public LLVMGenerator(FileWriter writer) {
         this.writer = writer;
@@ -19,13 +21,20 @@ public class LLVMGenerator {
 
     public void generate(ControlFlowGraph graph) {
         this.visitedNodes.add(((CFGNode)graph.entry).getLabel());
+        this.graphExit = graph.exit;
+        this.printExit = false;
         printNode(graph.entry);
+        this.printExit = true;
+        if (printNodeLabel(graphExit)) {
+            printNode(graphExit);
+        }
         visitedNodes.clear();
     }
 
     private void printNode(Node node) {
         if (node instanceof CFGNode) {
             CFGNode current = (CFGNode)node;
+            if (current == graphExit && !this.printExit) { return; }
             printNodeLabel(current);
             printNodeLLVM(current.llvmStrings);
             printNode(current.next);
@@ -79,6 +88,9 @@ public class LLVMGenerator {
     private boolean printNodeLabel(Node node) {
         if (node instanceof AbstractCFGNode) {
             AbstractCFGNode abstractCFGNode = (AbstractCFGNode)node;
+            if (abstractCFGNode == graphExit && !this.printExit) {
+                return false;
+            }
             String label = abstractCFGNode.getLabel();
             if (this.visitedNodes.contains(label)) {
                 return false;

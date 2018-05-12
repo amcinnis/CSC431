@@ -52,13 +52,14 @@ public class CFGGenerator {
                 fileWriter.write(globalInstruction);
             }
 
-            int i = 0, funcStop = 3;
+            int i = 0, funcStop = 6;
             //For each function in program, generate a CFG.
             for (Function function : program.getFuncs()) {
                 if (i == funcStop) { break; }
                 this.currentFunction = function;
                 graphs.add(generateCFG(function));
                 graphEntry = null;
+                graphExit = null;
                 i++;
             }
 
@@ -167,6 +168,7 @@ public class CFGGenerator {
 
         //Generate Entry and Exit nodes
         graphExit = new CFGNode(newLabel());
+        graph.exit = graphExit;
         graph.entry = new CFGNode(newLabel());
 
         //Get function body
@@ -264,35 +266,38 @@ public class CFGGenerator {
 
         //Store return value to _retval_ if non-void function
         if (!(returnType instanceof VoidType)) {
-            if (current instanceof CFGNode) {
-                CFGNode returnNode = (CFGNode)current;
-                List<Instruction> llvmInstructions = returnNode.llvmInstructions;
-                ResultingInstruction resultingInstruction =
-                        (ResultingInstruction)llvmInstructions.get(llvmInstructions.size()-1);
-                String result = resultingInstruction.getResult();
-                StoreInstruction storeResult = new StoreInstruction(resultingInstruction.getType(),
-                        result, "%_retval_");
-                returnNode.llvmInstructions.add(storeResult);
-                returnNode.llvmStrings.add(storeResult.toString());
-
-                //Load return value in exit node
-                LoadInstruction load = new LoadInstruction(newRegLabel(), storeResult.getType(), "%_retval_");
-                graphExit.llvmInstructions.add(load);
-                graphExit.llvmStrings.add(load.toString());
-                ReturnInstruction ret = new ReturnInstruction(load.getType(), load.getResult());
-                graphExit.llvmInstructions.add(ret);
-                graphExit.llvmStrings.add(ret.toString());
-            }
+            //Load return value in exit node
+            LoadInstruction load = new LoadInstruction(newRegLabel(), typeToLLVM(returnType) + "*", "%_retval_");
+            graphExit.llvmInstructions.add(load);
+            graphExit.llvmStrings.add(load.toString());
+            ReturnInstruction ret = new ReturnInstruction(load.getType(), load.getResult());
+            graphExit.llvmInstructions.add(ret);
+            graphExit.llvmStrings.add(ret.toString());
         }
 
-        //Unconditional Branch to exit node
-        UnconditionalBranchInstruction finalBranch = new UnconditionalBranchInstruction(graphExit.getLabel());
-        ((CFGNode)current).llvmStrings.add(finalBranch.toString());
 
         if (current instanceof CFGNode) {
+            CFGNode node = (CFGNode)current;
+            boolean addBranch = false;
+            if (node.llvmInstructions.size() > 0) {
+                Instruction previous = node.llvmInstructions.get(node.llvmInstructions.size()-1);
+                if (!(previous instanceof UnconditionalBranchInstruction || previous instanceof ConditionalBranchInstruction)) {
+                    //Unconditional Branch to exit node
+                    UnconditionalBranchInstruction finalBranch = new UnconditionalBranchInstruction(graphExit.getLabel());
+                    ((CFGNode) current).llvmStrings.add(finalBranch.toString());
+                }
+            }
+
             ((CFGNode) current).next = graphExit;
-            graphExit.llvmStrings.add("}\n\n");
+
         }
+        else if (current instanceof WhileCFGNode) {
+            WhileCFGNode whileNode = (WhileCFGNode)current;
+            whileNode.next = graphExit;
+            generateWhileBranches(whileNode);
+        }
+
+        graphExit.llvmStrings.add("}\n\n");
 
         return graph;
     }
@@ -351,21 +356,7 @@ public class CFGGenerator {
                 }
                 else if (whileNode.next == null) {
                     whileNode.next = newNode;
-                    //WhileNode Guard
-                    ResultingInstruction result = (ResultingInstruction)whileNode.llvmInstructions.get(whileNode.llvmInstructions.size()-1);
-                    String bodyLabel = ((AbstractCFGNode)whileNode.body).getLabel();
-                    String nextLabel = newNode.getLabel();
-                    ConditionalBranchInstruction branch =
-                            new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
-                    whileNode.llvmInstructions.add(branch);
-                    whileNode.llvmStrings.add(branch.toString());
-
-                    //Body CFGNode
-                    CFGNode body = (CFGNode)whileNode.body;
-                    result = (ResultingInstruction)body.llvmInstructions.get(body.llvmInstructions.size()-1);
-                    branch = new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
-                    body.llvmInstructions.add(branch);
-                    body.llvmStrings.add(branch.toString());
+                    generateWhileBranches(whileNode);
                     current = newNode;
                 }
                 else {
@@ -385,6 +376,24 @@ public class CFGGenerator {
         }
 
         return current;
+    }
+
+    private void generateWhileBranches(WhileCFGNode whileNode) {
+        //WhileNode Guard
+        ResultingInstruction result = (ResultingInstruction)whileNode.llvmInstructions.get(whileNode.llvmInstructions.size()-1);
+        String bodyLabel = ((AbstractCFGNode)whileNode.body).getLabel();
+        String nextLabel = ((AbstractCFGNode)whileNode.next).getLabel();
+        ConditionalBranchInstruction branch =
+                new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
+        whileNode.llvmInstructions.add(branch);
+        whileNode.llvmStrings.add(branch.toString());
+
+        //Body CFGNode
+        CFGNode body = (CFGNode)whileNode.body;
+        result = (ResultingInstruction)body.llvmInstructions.get(body.llvmInstructions.size()-1);
+        branch = new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
+        body.llvmInstructions.add(branch);
+        body.llvmStrings.add(branch.toString());
     }
 
     private Node processConditional(ConditionalStatement conditional, Node current) {
@@ -420,14 +429,7 @@ public class CFGGenerator {
             }
             else if (whileNode.next == null) {
                 whileNode.next = newNode;
-                ResultingInstruction result =
-                        (ResultingInstruction)whileNode.llvmInstructions.get(whileNode.llvmInstructions.size()-1);
-                String bodyLabel = ((AbstractCFGNode)whileNode.body).getLabel();
-                String nextLabel = newNode.getLabel();
-                ConditionalBranchInstruction branch =
-                        new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
-                whileNode.llvmInstructions.add(branch);
-                whileNode.llvmStrings.add(branch.toString());
+                generateWhileBranches(whileNode);
             }
             else {
                 System.out.println("processConditional whileNode's body/next both not null!");
@@ -550,41 +552,75 @@ public class CFGGenerator {
             ReturnStatement returnStatement = (ReturnStatement)statement;
             Expression expression = returnStatement.getExpression();
             instructions = generateLLVMFromExpression(expression);
+
+            String result;
+            String type;
+            Instruction prev = instructions.get(instructions.size()-1);
+            if (!(prev instanceof Immediate)) {
+                ResultingInstruction resultingInstruction =
+                        (ResultingInstruction)prev;
+                result = resultingInstruction.getResult();
+                type = resultingInstruction.getType();
+            }
+            else {
+                Immediate immediate = (Immediate)prev;
+                result = immediate.getValue();
+                type = "i32";
+                instructions.remove(prev);
+            }
+            StoreInstruction storeResult = new StoreInstruction(type,
+                    result, "%_retval_");
+            instructions.add(storeResult);
+
+            //Generate UnconditionalBranch to graphExit
+            UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(graphExit.getLabel());
+            instructions.add(branch);
         }
         else if (statement instanceof AssignmentStatement) {
             AssignmentStatement assignmentStatement = (AssignmentStatement)statement;
             //Evaluate Assignment Source
             Expression source = assignmentStatement.getSource();
+            Lvalue target = assignmentStatement.getTarget();
             ResultingInstruction sourceResult;
-            if (source instanceof IntegerExpression) {
-                IntegerExpression integerExpression = (IntegerExpression)source;
-                sourceResult = new LoadInstruction(integerExpression.getValue(), "i32", null);
+            if (!(source instanceof ReadExpression)) {
+                if (source instanceof IntegerExpression) {
+                    IntegerExpression integerExpression = (IntegerExpression) source;
+                    sourceResult = new LoadInstruction(integerExpression.getValue(), "i32", null);
+                } else {
+                    List<Instruction> sourceInstructions = generateLLVMFromExpression(source);
+                    instructions.addAll(sourceInstructions);
+                    sourceResult = (ResultingInstruction) sourceInstructions.get(sourceInstructions.size() - 1);
+                }
+
+                String resultType = sourceResult.getType();
+                if (resultType.equals("i32*")) {
+                    resultType = "i32";
+                }
+
+                if (target instanceof LvalueId) {
+                    LvalueId left = (LvalueId) target;
+                    String id = storeIdentifierLookup(left.getId());
+                    StoreInstruction storeInstruction = new StoreInstruction(resultType, sourceResult.getResult(), id);
+                    instructions.add(storeInstruction);
+                } else if (target instanceof LvalueDot) {
+                    LvalueDot dotExpression = (LvalueDot) target;
+                    List<Instruction> dotInstructions = processLvalueDotExpression(dotExpression);
+                    instructions.addAll(dotInstructions);
+                    ResultingInstruction dotResult = (ResultingInstruction) instructions.get(instructions.size() - 1);
+                    StoreInstruction store = new StoreInstruction(resultType, sourceResult.getResult(), dotResult.getResult());
+                    instructions.add(store);
+                }
             }
             else {
-                List<Instruction> sourceInstructions = generateLLVMFromExpression(source);
-                instructions.addAll(sourceInstructions);
-                sourceResult = (ResultingInstruction)sourceInstructions.get(sourceInstructions.size()-1);
-            }
-
-            String resultType = sourceResult.getType();
-            if (resultType.equals("i32*")) {
-                resultType = "i32";
-            }
-
-            Lvalue target = assignmentStatement.getTarget();
-            if (target instanceof LvalueId) {
-                LvalueId left = (LvalueId)target;
-                String id = storeIdentifierLookup(left.getId());
-                StoreInstruction storeInstruction = new StoreInstruction(resultType, sourceResult.getResult(), id);
-                instructions.add(storeInstruction);
-            }
-            else if (target instanceof LvalueDot) {
-                LvalueDot dotExpression = (LvalueDot)target;
-                List<Instruction> dotInstructions = processLvalueDotExpression(dotExpression);
-                instructions.addAll(dotInstructions);
-                ResultingInstruction dotResult = (ResultingInstruction)instructions.get(instructions.size()-1);
-                StoreInstruction store = new StoreInstruction(resultType, sourceResult.getResult(), dotResult.getResult());
-                instructions.add(store);
+                //ReadExpression
+                List<String> args = new ArrayList<>();
+                args.add("i8* getelementptr inbounds ([4 x i8]* @.read, i32 0, i32 0)");
+                if (target instanceof LvalueId) {
+                    LvalueId value = (LvalueId)target;
+                    args.add("i32* %" + value.getId());
+                }
+                CallInstruction call = new CallInstruction(null, "i32 (i8*, ...)*", "@scanf", args);
+                instructions.add(call);
             }
         }
         else if (statement instanceof InvocationStatement) {
@@ -607,6 +643,22 @@ public class CFGGenerator {
             List<String> functionArgs = new ArrayList<>();
             functionArgs.add(bitcast.getType() + " " + bitcast.getResult());
             CallInstruction call = new CallInstruction(null, "void", "@free", functionArgs);
+            instructions.add(call);
+        }
+        else if (statement instanceof PrintLnStatement) {
+            PrintLnStatement printStatement = (PrintLnStatement) statement;
+            Expression expression = printStatement.getExpression();
+            List<Instruction> printInstructions = generateLLVMFromExpression(expression);
+            instructions.addAll(printInstructions);
+            List<String> args = new ArrayList<>();
+            args.add("i8* getelementptr inbounds ([5 x i8]* @.println, i32 0, i32 0");
+            ResultingInstruction result = (ResultingInstruction)printInstructions.get(printInstructions.size()-1);
+            String type = result.getType();
+            if (type.equals("i32*")) {
+                type = type.substring(0, type.length() - 1);
+            }
+            args.add(type + " " + result.getResult());
+            CallInstruction call = new CallInstruction(null, "i32 (i8*, ...)*", "@printf", args);
             instructions.add(call);
         }
         else {
@@ -778,11 +830,24 @@ public class CFGGenerator {
             List<String> argsLLVM = new ArrayList<>();
             for (Expression argument : arguments) {
                 List<Instruction> argumentLLVM = generateLLVMFromExpression(argument);
+                Instruction paramInstruction = argumentLLVM.get(argumentLLVM.size() - 1);
+                if (paramInstruction instanceof ResultingInstruction) {
+                    ResultingInstruction result = (ResultingInstruction)paramInstruction;
+                    String resultType = result.getType();
+                    if (resultType.equals("i32*")) {
+                        resultType = "i32";
+                    }
+                    argsLLVM.add(resultType + " " + result.getResult());
+                }
+                else if (paramInstruction instanceof Immediate){
+                    Immediate result = (Immediate)paramInstruction;
+                    argsLLVM.add("i32 " + result.getValue());
+                    argumentLLVM.remove(paramInstruction);
+                }
+                else {
+                    System.out.println("paramInstruction has unaccounted for Instance!");
+                }
                 instructions.addAll(argumentLLVM);
-                ResultingInstruction result = (ResultingInstruction)argumentLLVM.get(argumentLLVM.size() - 1);
-                String resultType = result.getType();
-                if (resultType.equals("i32*")) { resultType = "i32"; }
-                argsLLVM.add(resultType + " " + result.getResult());
             }
 
             //Generate instructions for invocation
@@ -845,6 +910,8 @@ public class CFGGenerator {
             case GT:
             case LE:
             case GE:
+            case EQ:
+            case NE:
                 //TODO: generate compare type for more than just Integer/Boolean
                 instruction = new CompareInstruction(newRegLabel(), getConditionCode(operator),
                         "i32", operand1, operand2);
