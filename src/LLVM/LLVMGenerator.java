@@ -48,8 +48,9 @@ public class LLVMGenerator {
         }
         else if (node instanceof WhileCFGNode) {
             WhileCFGNode current = (WhileCFGNode)node;
-            printNodeLabel(current);
-            printNodeLLVM(current.llvmStrings);
+            if (printNodeLabel(current)) {
+                printNodeLLVM(current.llvmStrings);
+            }
 
             Node body = current.body;
             if (printNodeLabel(body)) {

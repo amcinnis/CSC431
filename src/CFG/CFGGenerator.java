@@ -24,7 +24,6 @@ public class CFGGenerator {
     private Function currentFunction;
     private String inputFile;
     private FileWriter fileWriter;
-    private CFGNode whileEnd;
 
     public CFGGenerator(String inputFile, Program program) {
         this.program = program;
@@ -37,7 +36,6 @@ public class CFGGenerator {
         this.currentFunction = null;
         this.inputFile = inputFile;
         this.fileWriter = null;
-        this.whileEnd = null;
     }
 
     public File generate() {
@@ -353,14 +351,21 @@ public class CFGGenerator {
                 }
                 else if (whileNode.next == null) {
                     whileNode.next = newNode;
-                    ResultingInstruction result =
-                            (ResultingInstruction)this.whileEnd.llvmInstructions.get(this.whileEnd.llvmInstructions.size()-1);
+                    //WhileNode Guard
+                    ResultingInstruction result = (ResultingInstruction)whileNode.llvmInstructions.get(whileNode.llvmInstructions.size()-1);
                     String bodyLabel = ((AbstractCFGNode)whileNode.body).getLabel();
                     String nextLabel = newNode.getLabel();
                     ConditionalBranchInstruction branch =
                             new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
                     whileNode.llvmInstructions.add(branch);
                     whileNode.llvmStrings.add(branch.toString());
+
+                    //Body CFGNode
+                    CFGNode body = (CFGNode)whileNode.body;
+                    result = (ResultingInstruction)body.llvmInstructions.get(body.llvmInstructions.size()-1);
+                    branch = new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
+                    body.llvmInstructions.add(branch);
+                    body.llvmStrings.add(branch.toString());
                     current = newNode;
                 }
                 else {
@@ -510,7 +515,6 @@ public class CFGGenerator {
 
         if (bodyEnd instanceof CFGNode) {
             CFGNode bodyNode = (CFGNode)bodyEnd;
-            this.whileEnd = bodyNode;
             List<Instruction> bodyGuardLLVM = generateLLVMFromExpression(guard);
             List<String> bodyGuardStrings = bodyGuardLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
             bodyNode.llvmInstructions.addAll(bodyGuardLLVM);

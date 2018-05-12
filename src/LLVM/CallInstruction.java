@@ -26,7 +26,7 @@ public class CallInstruction extends ResultingInstruction {
         String args = String.join(", ", functionArgs);
         String result = this.getResult();
         if (result == null) {
-            return "\tcall " + this.getType() + " " + functionPointer + " (" + args + ")\n";
+            return "\tcall " + this.getType() + " " + functionPointer + "(" + args + ")\n";
         }
         else {
             return "\t" + this.getResult() + " = call " + this.getType() + " " + functionPointer + "(" + args + ")\n";
