@@ -271,7 +271,12 @@ public class CFGGenerator {
             LoadInstruction load = new LoadInstruction(newRegLabel(), typeToLLVM(returnType) + "*", "%_retval_");
             graphExit.llvmInstructions.add(load);
             graphExit.llvmStrings.add(load.toString());
-            ReturnInstruction ret = new ReturnInstruction(load.getType(), load.getResult());
+            //Strip tailing '*'
+            String type = load.getType();
+            if (type.equals("i32*")) {
+                type = "i32";
+            }
+            ReturnInstruction ret = new ReturnInstruction(type, load.getResult());
             graphExit.llvmInstructions.add(ret);
             graphExit.llvmStrings.add(ret.toString());
         }
@@ -279,7 +284,6 @@ public class CFGGenerator {
 
         if (current instanceof CFGNode) {
             CFGNode node = (CFGNode)current;
-            boolean addBranch = false;
             if (node.llvmInstructions.size() > 0) {
                 Instruction previous = node.llvmInstructions.get(node.llvmInstructions.size()-1);
                 if (!(previous instanceof UnconditionalBranchInstruction || previous instanceof ConditionalBranchInstruction)) {
@@ -324,12 +328,8 @@ public class CFGGenerator {
         else {
             //check for graph.entry -> Create new node
             //check if CFGNode has been created. If not, create and link.
-            if (/*current == graphEntry || */current == null) {
+            if (current == null) {
                 CFGNode newNode = new CFGNode(newLabel());
-
-                /*if (current == graphEntry) {
-                    graphEntry.next = newNode;
-                }*/
                 current = newNode;
             }
             else if (current instanceof ConditionalCFGNode) {
@@ -410,6 +410,9 @@ public class CFGGenerator {
         if (current instanceof CFGNode) {
             CFGNode cfgNode = (CFGNode)current;
             cfgNode.next = newNode;
+            UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(newNode.getLabel());
+            cfgNode.llvmInstructions.add(branch);
+            cfgNode.llvmStrings.add(branch.toString());
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
@@ -652,7 +655,7 @@ public class CFGGenerator {
             List<Instruction> printInstructions = generateLLVMFromExpression(expression);
             instructions.addAll(printInstructions);
             List<String> args = new ArrayList<>();
-            args.add("i8* getelementptr inbounds ([5 x i8]* @.println, i32 0, i32 0");
+            args.add("i8* getelementptr inbounds ([5 x i8]* @.println, i32 0, i32 0)");
             ResultingInstruction result = (ResultingInstruction)printInstructions.get(printInstructions.size()-1);
             String type = result.getType();
             if (type.equals("i32*")) {

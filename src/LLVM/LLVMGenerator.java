@@ -41,7 +41,9 @@ public class LLVMGenerator {
         }
         else if (node instanceof ConditionalCFGNode) {
             ConditionalCFGNode current = (ConditionalCFGNode)node;
-            printNodeLLVM(current.llvmStrings);
+            if (printNodeLabel(current)) {
+                printNodeLLVM(current.llvmStrings);
+            }
 
             Node thenNode = current.thenNode;
             if (printNodeLabel(thenNode)) {
@@ -93,6 +95,9 @@ public class LLVMGenerator {
             }
             String label = abstractCFGNode.getLabel();
             if (this.visitedNodes.contains(label)) {
+                return false;
+            }
+            else if (abstractCFGNode.llvmInstructions.size() == 0) {
                 return false;
             }
             else {

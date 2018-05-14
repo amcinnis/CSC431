@@ -15,6 +15,6 @@ public class LoadInstruction extends ResultingInstruction {
 
     @Override
     public String toString() {
-        return "\t" + this.getResult() + " = load " + this.getType() + ", " + pointer + "\n";
+        return "\t" + this.getResult() + " = load " + this.getType() + " " + pointer + "\n";
     }
 }
