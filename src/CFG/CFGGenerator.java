@@ -20,47 +20,58 @@ public class CFGGenerator {
     private int registerCount;
     private CFGNode graphEntry;
     private CFGNode graphExit;
-    private List<String> globalInstructions;
+    private List<String> globalLLVM;
+    private List<String> globalARM;
     private Function currentFunction;
     private String inputFile;
-    private FileWriter fileWriter;
+    private FileWriter llvmWriter;
+    private FileWriter armWriter;
+    private boolean stackOption;
 
-    public CFGGenerator(String inputFile, Program program) {
+    public CFGGenerator(String inputFile, Program program, boolean stackOption) {
         this.program = program;
         this.labelCount = 0;
         this.joinCount = 0;
         this.registerCount = 0;
         this.graphEntry = null;
         this.graphExit = null;
-        this.globalInstructions = new ArrayList<>();
+        this.globalLLVM = new ArrayList<>();
+        this.globalARM = new ArrayList<>();
         this.currentFunction = null;
         this.inputFile = inputFile;
-        this.fileWriter = null;
+        this.llvmWriter = null;
+        this.armWriter = null;
+        this.stackOption = stackOption;
     }
 
-    public File generate() {
+    public void generate() {
         File llvmFile = createLLVMFile(inputFile);
+        File armFile = createARMFile(llvmFile.getPath());
         try {
-            fileWriter = new FileWriter(llvmFile);
+            llvmWriter = new FileWriter(llvmFile);
+            armWriter = new FileWriter(armFile);
             List<ControlFlowGraph> graphs = new ArrayList<>();
 
             //Generate global miniStatements, write to file.
             List<TypeDeclaration> structs = program.getTypes();
             List<Declaration> globals = program.getDecls();
             generateGlobalInstructions(structs, globals);
-            for (String globalInstruction : this.globalInstructions) {
-                fileWriter.write(globalInstruction);
+            for (String globalInstruction : this.globalLLVM) {
+                llvmWriter.write(globalInstruction);
+            }
+            for (String globalInstruction : this.globalARM) {
+                armWriter.write(globalInstruction);
             }
 
-            int i = 0, funcStop = 6;
+//            int i = 0, funcStop = 6;
             //For each function in program, generate a CFG.
             for (Function function : program.getFuncs()) {
-                if (i == funcStop) { break; }
+//                if (i == funcStop) { break; }
                 this.currentFunction = function;
                 graphs.add(generateCFG(function));
                 graphEntry = null;
                 graphExit = null;
-                i++;
+//                i++;
             }
 
             //Print CFGs
@@ -69,7 +80,7 @@ public class CFGGenerator {
             }
 
             //Write LLVM to file
-            LLVMGenerator generator = new LLVMGenerator(fileWriter);
+            LLVMGenerator generator = new LLVMGenerator(llvmWriter, armWriter, stackOption);
             for (ControlFlowGraph graph : graphs) {
                 generator.generate(graph);
             }
@@ -77,13 +88,12 @@ public class CFGGenerator {
             //Footer Instructions
             generator.printFooterInstructions();
 
-            fileWriter.close();
+            llvmWriter.close();
+            armWriter.close();
         }
         catch (IOException e) {
             e.printStackTrace();
         }
-
-        return llvmFile;
     }
 
     private File createLLVMFile(String inputFile) {
@@ -105,37 +115,36 @@ public class CFGGenerator {
         }
     }
 
+    private File createARMFile(String llvmPath) {
+        //Strip extension and append '.s'
+        int pos = llvmPath.lastIndexOf('.');
+        String armExtension = ".s";
+        if (pos == -1) {
+            return new File(llvmPath + armExtension);
+        }
+        else {
+            return new File(llvmPath.substring(0, pos) + armExtension);
+        }
+    }
+
     private void generateGlobalInstructions(List<TypeDeclaration> structs, List<Declaration> globals) {
 
         //Generate 32bit architecture instruction
-        this.globalInstructions.add("target triple=\"i686\"\n");
+        this.globalLLVM.add("target triple=\"i686\"\n");
+
+        //ARM v7 Architecture
+        this.globalARM.add("\t.arch armv7-a\n");
 
         //Generate struct definition miniStatements
         generateGlobalStructs(structs);
-        this.globalInstructions.add("\n");
+        this.globalLLVM.add("\n");
 
         //Generate global variable miniStatements
         generateGlobalDeclarations(globals);
-        this.globalInstructions.add("\n");
-    }
+        this.globalLLVM.add("\n");
 
-    private void generateGlobalDeclarations(List<Declaration> globals) {
-
-        StringBuilder instruction;
-
-        for (Declaration global : globals) {
-            instruction = new StringBuilder("@");
-
-            String name = global.getName();
-            Type type = global.getType();
-            if (type instanceof StructType) {
-                String typeName = ((StructType) type).getName();
-                instruction.append(name + " = common global %struct." + typeName + "* null, align 8\n");
-            }
-            //TODO: Make function more robust to handle Ints and Bools
-
-            this.globalInstructions.add(instruction.toString());
-        }
+        //ARM .text
+        this.globalARM.add("\t.text\n\n");
     }
 
     private void generateGlobalStructs(List<TypeDeclaration> structs) {
@@ -161,7 +170,29 @@ public class CFGGenerator {
                 }
             }
             instruction.append(String.join(", ", typesList) + "}\n");
-            this.globalInstructions.add(instruction.toString());
+            this.globalLLVM.add(instruction.toString());
+        }
+    }
+
+    private void generateGlobalDeclarations(List<Declaration> globals) {
+
+        StringBuilder instruction;
+
+        for (Declaration global : globals) {
+            instruction = new StringBuilder("@");
+
+            String name = global.getName();
+            Type type = global.getType();
+            if (type instanceof StructType) {
+                String typeName = ((StructType) type).getName();
+                instruction.append(name + " = common global %struct." + typeName + "* null, align 8\n");
+            }
+            //TODO: Make function more robust to handle Ints and Bools
+
+            this.globalLLVM.add(instruction.toString());
+
+            //ARM
+            this.globalARM.add("\t.comm\t" + name + ",4,4\n");
         }
     }
 
@@ -187,6 +218,7 @@ public class CFGGenerator {
         List <Declaration> params = function.getParams();
         StringBuilder declaration = new StringBuilder("define " + typeToLLVM(returnType) + " @");
         declaration.append(functionName + "(");
+
 
         //Generate LLVM for parameters
         List <String> llvmParams = new ArrayList<>();
@@ -214,10 +246,16 @@ public class CFGGenerator {
         graphEntry.llvmStrings.add("{\n");
         graphEntry.llvmStrings.add(graphEntry.getLabel() + ":\n");
 
+        //ARM Declaration
+        graphEntry.armStrings.add("\t.align 2\n");
+        graphEntry.armStrings.add("\t.global " + functionName + "\n");
+        graphEntry.armStrings.add(functionName + ":\n");
+        graphEntry.armStrings.add(graphEntry.getLabel() + ":\n");
+
         //Generate LLVM for return type
         if (returnType instanceof VoidType) {
             ReturnVoidInstruction returnVoidInstruction = new ReturnVoidInstruction();
-            graphExit.llvmInstructions.add(returnVoidInstruction);
+            graphExit.instructions.add(returnVoidInstruction);
             graphExit.llvmStrings.add(returnVoidInstruction.toString());
         }
         else {
@@ -230,12 +268,12 @@ public class CFGGenerator {
                 retTypeString = "STRUCTTT";
             }
             AllocateInstruction returnAllocateInstruction = new AllocateInstruction("%_retval_", retTypeString);
-            graphEntry.llvmInstructions.add(returnAllocateInstruction);
+            graphEntry.instructions.add(returnAllocateInstruction);
             graphEntry.llvmStrings.add(returnAllocateInstruction.toString());
         }
 
         //Grab previously stored instructions and write them to entry node
-        graphEntry.llvmInstructions.addAll(allocateLLVM);
+        graphEntry.instructions.addAll(allocateLLVM);
         List<String> paramStrings = allocateLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
         graphEntry.llvmStrings.addAll(paramStrings);
 
@@ -256,7 +294,7 @@ public class CFGGenerator {
             else {
                 System.out.println("Error! Reached VoidType when generating local variables LLVM!");
             }
-            graphEntry.llvmInstructions.add(allocateInstruction);
+            graphEntry.instructions.add(allocateInstruction);
             graphEntry.llvmStrings.add(allocateInstruction.toString());
         }
 
@@ -269,31 +307,35 @@ public class CFGGenerator {
         if (!(returnType instanceof VoidType)) {
             //Load return value in exit node
             LoadInstruction load = new LoadInstruction(newRegLabel(), typeToLLVM(returnType) + "*", "%_retval_");
-            graphExit.llvmInstructions.add(load);
+            graphExit.instructions.add(load);
             graphExit.llvmStrings.add(load.toString());
+            graphExit.armStrings.addAll(load.toARM());
             //Strip tailing '*'
             String type = load.getType();
             if (type.equals("i32*")) {
                 type = "i32";
             }
             ReturnInstruction ret = new ReturnInstruction(type, load.getResult());
-            graphExit.llvmInstructions.add(ret);
+            graphExit.instructions.add(ret);
             graphExit.llvmStrings.add(ret.toString());
+            graphExit.armStrings.addAll(ret.toARM());
         }
 
 
         if (current instanceof CFGNode) {
             CFGNode node = (CFGNode)current;
-            if (node.llvmInstructions.size() > 0) {
-                Instruction previous = node.llvmInstructions.get(node.llvmInstructions.size()-1);
+            if (node.instructions.size() > 0) {
+                Instruction previous = node.instructions.get(node.instructions.size()-1);
                 if (!(previous instanceof UnconditionalBranchInstruction || previous instanceof ConditionalBranchInstruction)) {
                     //Unconditional Branch to exit node
                     UnconditionalBranchInstruction finalBranch = new UnconditionalBranchInstruction(graphExit.getLabel());
-                    ((CFGNode) current).llvmStrings.add(finalBranch.toString());
+                    node.instructions.add(finalBranch);
+                    node.llvmStrings.add(finalBranch.toString());
+                    node.armStrings.addAll(finalBranch.toARM());
                 }
             }
 
-            ((CFGNode) current).next = graphExit;
+            node.next = graphExit;
 
         }
         else if (current instanceof WhileCFGNode) {
@@ -314,15 +356,11 @@ public class CFGGenerator {
         }
         else if (statement instanceof ConditionalStatement) {
             ConditionalStatement conditional = (ConditionalStatement)statement;
-            //Create new ConditionalCFGNode
-            //current.next = new Conditional Node
             current = processConditional(conditional, current);
 
         }
         else if (statement instanceof WhileStatement) {
             WhileStatement whileStatement = (WhileStatement)statement;
-            //Create new WhileCFGNode
-            //current.next = new While node
             current = processWhile(whileStatement, current);
         }
         else {
@@ -371,7 +409,7 @@ public class CFGGenerator {
             ((CFGNode)current).miniStatements.add(miniString);
             //Generate LLVM for instruction
             List<Instruction> instructions = generateLLVMInstruction(statement);
-            ((CFGNode)current).llvmInstructions.addAll(instructions);
+            ((CFGNode)current).instructions.addAll(instructions);
             List<String> llvmStrings = instructions.stream().map(Instruction::toString).collect(Collectors.toList());
             ((CFGNode)current).llvmStrings.addAll(llvmStrings);
         }
@@ -381,20 +419,21 @@ public class CFGGenerator {
 
     private void generateWhileBranches(WhileCFGNode whileNode) {
         //WhileNode Guard
-        ResultingInstruction result = (ResultingInstruction)whileNode.llvmInstructions.get(whileNode.llvmInstructions.size()-1);
+        ResultingInstruction result = (ResultingInstruction)whileNode.instructions.get(whileNode.instructions.size()-1);
         String bodyLabel = ((AbstractCFGNode)whileNode.body).getLabel();
         String nextLabel = ((AbstractCFGNode)whileNode.next).getLabel();
         ConditionalBranchInstruction branch =
                 new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
-        whileNode.llvmInstructions.add(branch);
+        whileNode.instructions.add(branch);
         whileNode.llvmStrings.add(branch.toString());
 
         //Body CFGNode
         CFGNode body = (CFGNode)whileNode.body;
-        result = (ResultingInstruction)body.llvmInstructions.get(body.llvmInstructions.size()-1);
+        result = (ResultingInstruction)body.instructions.get(body.instructions.size()-1);
         branch = new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
-        body.llvmInstructions.add(branch);
+        body.instructions.add(branch);
         body.llvmStrings.add(branch.toString());
+
     }
 
     private Node processConditional(ConditionalStatement conditional, Node current) {
@@ -402,7 +441,7 @@ public class CFGGenerator {
 
         //Guard LLVM
         List<Instruction> guardLLVM = generateLLVMFromExpression(conditional.getGuard());
-        newNode.llvmInstructions.addAll(guardLLVM);
+        newNode.instructions.addAll(guardLLVM);
         List<String> guardStrings = guardLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
         newNode.llvmStrings.addAll(guardStrings);
 
@@ -411,7 +450,7 @@ public class CFGGenerator {
             CFGNode cfgNode = (CFGNode)current;
             cfgNode.next = newNode;
             UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(newNode.getLabel());
-            cfgNode.llvmInstructions.add(branch);
+            cfgNode.instructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
         }
         else if (current instanceof ConditionalCFGNode) {
@@ -471,7 +510,7 @@ public class CFGGenerator {
         String elseLabel = (newNode.elseNode != null) ?
                 ((AbstractCFGNode) newNode.elseNode).getLabel() : joinNode.getLabel();
         ConditionalBranchInstruction branch = new ConditionalBranchInstruction(condition, thenLabel, elseLabel);
-        newNode.llvmInstructions.add(branch);
+        newNode.instructions.add(branch);
         newNode.llvmStrings.add(branch.toString());
 
         return joinNode;
@@ -484,13 +523,13 @@ public class CFGGenerator {
         //Guard LLVM
         List<Instruction> guardLLVM = generateLLVMFromExpression(guard);
         List<String> guardStrings = guardLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
-        newNode.llvmInstructions.addAll(guardLLVM);
+        newNode.instructions.addAll(guardLLVM);
         newNode.llvmStrings.addAll(guardStrings);
 
         if (current instanceof CFGNode) {
             CFGNode cfgNode = (CFGNode)current;
             UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(newNode.getLabel());
-            cfgNode.llvmInstructions.add(branch);
+            cfgNode.instructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
             ((CFGNode) current).next = newNode;
         }
@@ -523,7 +562,7 @@ public class CFGGenerator {
             CFGNode bodyNode = (CFGNode)bodyEnd;
             List<Instruction> bodyGuardLLVM = generateLLVMFromExpression(guard);
             List<String> bodyGuardStrings = bodyGuardLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
-            bodyNode.llvmInstructions.addAll(bodyGuardLLVM);
+            bodyNode.instructions.addAll(bodyGuardLLVM);
             bodyNode.llvmStrings.addAll(bodyGuardStrings);
             bodyNode.next = newNode;
         }

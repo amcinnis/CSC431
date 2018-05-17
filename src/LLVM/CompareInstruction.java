@@ -1,5 +1,8 @@
 package LLVM;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class CompareInstruction extends ResultingInstruction {
 
     private String conditionCode;
@@ -17,5 +20,36 @@ public class CompareInstruction extends ResultingInstruction {
     @Override
     public String toString() {
         return "\t" + getResult() + " = icmp " + conditionCode + " " + this.getType() + " " + operand1 + ", " + operand2 + "\n";
+    }
+
+    public List<String> toARM() {
+        List<String> instructions = new ArrayList<>();
+        instructions.add("\tmov " + this.getResult() + ", #0\n");
+        instructions.add("\tcmp " + this.operand1 + ", " + this.operand2 + "\n");
+        String movCode = null;
+        switch (this.conditionCode) {
+            case "eq":
+                movCode = "eq";
+                break;
+            case "ne":
+                movCode = "ne";
+                break;
+            case "sgt":
+                movCode = "gt";
+                break;
+            case "sge":
+                movCode = "ge";
+                break;
+            case "slt":
+                movCode = "lt";
+                break;
+            case "sle":
+                movCode = "le";
+            default:
+                System.out.println("Unimplemented conditionCode case in CompareInstruction toARM!");
+                break;
+        }
+        instructions.add("\tmov" + movCode + " " + this.getResult() + ", #1\n");
+        return instructions;
     }
 }

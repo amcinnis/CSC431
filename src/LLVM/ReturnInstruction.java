@@ -1,5 +1,8 @@
 package LLVM;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ReturnInstruction extends AbstractInstruction {
 
     private String type;
@@ -13,5 +16,13 @@ public class ReturnInstruction extends AbstractInstruction {
     @Override
     public String toString() {
         return "\tret " + type + " " + value + "\n";
+    }
+
+    @Override
+    public List<String> toARM() {
+        List<String> instructions = new ArrayList<>();
+        instructions.add("\tmov r0, " + this.value + "\n");
+        instructions.add("\tret\n");
+        return instructions;
     }
 }

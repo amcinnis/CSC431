@@ -1,5 +1,7 @@
 package LLVM;
 
+import java.util.List;
+
 public class TruncateInstruction extends ResultingInstruction {
 
     private String oldType;
@@ -9,5 +11,11 @@ public class TruncateInstruction extends ResultingInstruction {
         super(result, newType);
         this.oldType = oldType;
         this.value = value;
+    }
+
+    @Override
+    public List<String> toARM() {
+        System.out.println("TruncateInstruction toARM()");
+        return null;
     }
 }

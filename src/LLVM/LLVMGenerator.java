@@ -9,18 +9,23 @@ import java.util.List;
 
 public class LLVMGenerator {
 
-    FileWriter writer;
-    List<String> visitedNodes;
-    CFGNode graphExit;
-    boolean printExit;
+    private FileWriter llvmWriter;
+    private FileWriter armWriter;
+    private List<String> visitedNodes;
+    private CFGNode graphExit;
+    private boolean printExit;
+    private boolean stackOption;
 
-    public LLVMGenerator(FileWriter writer) {
-        this.writer = writer;
+
+    public LLVMGenerator(FileWriter llvmWriter, FileWriter armWriter, boolean stackOption) {
+        this.llvmWriter = llvmWriter;
+        this.armWriter = armWriter;
         this.visitedNodes = new ArrayList<>();
+        this.stackOption = stackOption;
     }
 
     public void generate(ControlFlowGraph graph) {
-        this.visitedNodes.add(((CFGNode)graph.entry).getLabel());
+        this.visitedNodes.add(graph.entry.getLabel());
         this.graphExit = graph.exit;
         this.printExit = false;
         printNode(graph.entry);
@@ -37,12 +42,14 @@ public class LLVMGenerator {
             if (current == graphExit && !this.printExit) { return; }
             printNodeLabel(current);
             printNodeLLVM(current.llvmStrings);
+            printNodeARM(current);
             printNode(current.next);
         }
         else if (node instanceof ConditionalCFGNode) {
             ConditionalCFGNode current = (ConditionalCFGNode)node;
             if (printNodeLabel(current)) {
                 printNodeLLVM(current.llvmStrings);
+                printNodeARM(current);
             }
 
             Node thenNode = current.thenNode;
@@ -61,6 +68,7 @@ public class LLVMGenerator {
             WhileCFGNode current = (WhileCFGNode)node;
             if (printNodeLabel(current)) {
                 printNodeLLVM(current.llvmStrings);
+                printNodeARM(current);
             }
 
             Node body = current.body;
@@ -78,8 +86,28 @@ public class LLVMGenerator {
     private void printNodeLLVM(List<String> instructions) {
         try {
             for (String instruction : instructions) {
-                System.out.print(instruction);
-                this.writer.write(instruction);
+                if (stackOption) {
+                    System.out.print(instruction);
+                }
+                this.llvmWriter.write(instruction);
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void printNodeARM(AbstractCFGNode node) {
+        try {
+            if (node.armStrings.size() > 0) {
+                for (String armInstruction : node.armStrings) {
+                    armWriter.write(armInstruction);
+                }
+            }
+            for (Instruction instruction : node.instructions) {
+                for (String armInstruction : instruction.toARM()) {
+                    armWriter.write(armInstruction);
+                }
             }
         }
         catch (IOException e) {
@@ -97,14 +125,17 @@ public class LLVMGenerator {
             if (this.visitedNodes.contains(label)) {
                 return false;
             }
-            else if (abstractCFGNode.llvmInstructions.size() == 0) {
+            else if (abstractCFGNode.instructions.size() == 0) {
                 return false;
             }
             else {
                 if (label.equals("Footer")) { return true; }
                 try {
-                    System.out.print(label + ":\n");
-                    this.writer.write(label + ":\n");
+                    if (stackOption) {
+                        System.out.print(label + ":\n");
+                    }
+                    this.llvmWriter.write(label + ":\n");
+                    this.armWriter.write(label + ":\n");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

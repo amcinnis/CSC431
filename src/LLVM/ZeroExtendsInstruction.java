@@ -1,5 +1,7 @@
 package LLVM;
 
+import java.util.List;
+
 public class ZeroExtendsInstruction extends ResultingInstruction {
 
     private String oldType;
@@ -9,5 +11,17 @@ public class ZeroExtendsInstruction extends ResultingInstruction {
         super(result, newType);
         this.oldType = oldType;
         this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return "\t" + this.getResult() + " = zext " + this.oldType + " " + this.value + " to "
+                + this.getType() + "\n";
+    }
+
+    @Override
+    public List<String> toARM() {
+        System.out.println("ZeroExtendsInstruction toARM()");
+        return null;
     }
 }

@@ -1,5 +1,8 @@
 package LLVM;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class StoreInstruction extends AbstractInstruction {
 
     private String type;
@@ -27,5 +30,12 @@ public class StoreInstruction extends AbstractInstruction {
     @Override
     public String toString() {
         return "\tstore " + type + " " + value + ", " + type + "* " + pointer + "\n";
+    }
+
+    @Override
+    public List<String> toARM() {
+        List<String> instructions = new ArrayList<>();
+        instructions.add("\tstr " + this.pointer + ", " + this.value + "\n");
+        return instructions;
     }
 }

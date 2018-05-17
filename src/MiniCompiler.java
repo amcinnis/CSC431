@@ -44,12 +44,13 @@ public class MiniCompiler
          checker.checkProgram();
 
          //Build Control Flow Graphs
-         CFGGenerator generator = new CFGGenerator(_inputFile, program);
-         File llvmFile = generator.generate();
+         CFGGenerator generator = new CFGGenerator(_inputFile, program, stackOption);
+         generator.generate();
       }
    }
 
    private static String _inputFile = null;
+   private static boolean stackOption = false;
 
    private static void parseParameters(String [] args)
    {
@@ -57,8 +58,13 @@ public class MiniCompiler
       {
          if (args[i].charAt(0) == '-')
          {
-            System.err.println("unexpected option: " + args[i]);
-            System.exit(1);
+            if (args[i].equals("-stack")) {
+               stackOption = true;
+            }
+            else {
+               System.err.println("unexpected option: " + args[i]);
+               System.exit(1);
+            }
          }
          else if (_inputFile != null)
          {

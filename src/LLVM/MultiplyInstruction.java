@@ -1,5 +1,7 @@
 package LLVM;
 
+import java.util.List;
+
 public class MultiplyInstruction extends BinaryInstruction {
 
     public MultiplyInstruction(String result, String type, String operand1, String operand2) {
@@ -10,5 +12,9 @@ public class MultiplyInstruction extends BinaryInstruction {
     public String toString() {
         return "\t" + this.getResult() + " = mul " + this.getType() + " " + this.getOperand1() + ", "
                 + this.getOperand2() + "\n";
+    }
+
+    public List<String> toARM() {
+        return super.toARM("mul");
     }
 }

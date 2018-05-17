@@ -1,5 +1,6 @@
 package LLVM;
 
-public abstract class AbstractInstruction implements Instruction {
+import java.util.List;
 
+public abstract class AbstractInstruction implements Instruction {
 }

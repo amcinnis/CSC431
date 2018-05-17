@@ -1,5 +1,6 @@
 package LLVM;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CallInstruction extends ResultingInstruction {
@@ -31,5 +32,22 @@ public class CallInstruction extends ResultingInstruction {
         else {
             return "\t" + this.getResult() + " = call " + this.getType() + " " + functionPointer + "(" + args + ")\n";
         }
+    }
+
+    @Override
+    public List<String> toARM() {
+        List<String> instructions = new ArrayList<>();
+        int paramRegCount = 0;
+        for (String arg : this.functionArgs) {
+            String regLabel = arg.split(" ")[1];
+            instructions.add("\tmov r" + paramRegCount++ + ", " + regLabel + "\n");
+        }
+
+        instructions.add("\tbl " + this.functionPointer + "\n");
+        if (this.getResult() != null) {
+            instructions.add("\tmov " + this.getResult() + ", r0\n");
+        }
+
+        return instructions;
     }
 }
