@@ -44,13 +44,14 @@ public class MiniCompiler
          checker.checkProgram();
 
          //Build Control Flow Graphs
-         CFGGenerator generator = new CFGGenerator(_inputFile, program, stackOption);
+         CFGGenerator generator = new CFGGenerator(_inputFile, program, stackOption, regOff);
          generator.generate();
       }
    }
 
    private static String _inputFile = null;
    private static boolean stackOption = false;
+   private static boolean regOff = false;
 
    private static void parseParameters(String [] args)
    {
@@ -60,6 +61,9 @@ public class MiniCompiler
          {
             if (args[i].equals("-stack")) {
                stackOption = true;
+            }
+            else if (args[i].equals("-regOff")) {
+               regOff = true;
             }
             else {
                System.err.println("unexpected option: " + args[i]);

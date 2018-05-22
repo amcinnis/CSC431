@@ -29,9 +29,10 @@ public class CFGGenerator {
     private FileWriter llvmWriter;
     private FileWriter armWriter;
     private boolean stackOption;
+    private boolean regOff;
     private HashMap<String, String> registerMap;
 
-    public CFGGenerator(String inputFile, Program program, boolean stackOption) {
+    public CFGGenerator(String inputFile, Program program, boolean stackOption, boolean regOff) {
         this.program = program;
         this.labelCount = 0;
         this.joinCount = 0;
@@ -45,6 +46,7 @@ public class CFGGenerator {
         this.llvmWriter = null;
         this.armWriter = null;
         this.stackOption = stackOption;
+        this.regOff = regOff;
         this.registerMap = new HashMap<>();
     }
 
