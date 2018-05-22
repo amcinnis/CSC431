@@ -1,5 +1,6 @@
 package LLVM;
 
+import java.util.HashMap;
 import java.util.List;
 
 public class DivideInstruction extends BinaryInstruction {
@@ -14,7 +15,7 @@ public class DivideInstruction extends BinaryInstruction {
                 + this.getOperand2() + "\n";
     }
 
-    public List<String> toARM() {
-        return super.toARM("sdiv");
+    public List<String> toARM(HashMap<String, String> registerMap) {
+        return super.toARM("sdiv", registerMap);
     }
 }

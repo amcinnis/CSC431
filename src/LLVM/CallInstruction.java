@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class CallInstruction extends ResultingInstruction {
@@ -27,20 +28,26 @@ public class CallInstruction extends ResultingInstruction {
         String args = String.join(", ", functionArgs);
         String result = this.getResult();
         if (result == null) {
-            return "\tcall " + this.getType() + " " + functionPointer + "(" + args + ")\n";
+            return "\tcall " + this.getType() + " @" + functionPointer + "(" + args + ")\n";
         }
         else {
-            return "\t" + this.getResult() + " = call " + this.getType() + " " + functionPointer + "(" + args + ")\n";
+            return "\t" + this.getResult() + " = call " + this.getType() + " @" + functionPointer + "(" + args + ")\n";
         }
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
         int paramRegCount = 0;
         for (String arg : this.functionArgs) {
             String regLabel = arg.split(" ")[1];
-            instructions.add("\tmov r" + paramRegCount++ + ", " + regLabel + "\n");
+            if (isInteger(regLabel)) {
+                int size = (Integer.parseInt(regLabel) / 2);
+                instructions.add("\tmovw r" + paramRegCount++ + ", #" + Integer.toString(size) + "\n");
+            }
+            else {
+                instructions.add("\tmov r" + paramRegCount++ + ", " + regLabel + "\n");
+            }
         }
 
         instructions.add("\tbl " + this.functionPointer + "\n");

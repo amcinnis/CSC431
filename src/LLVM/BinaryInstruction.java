@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public abstract class BinaryInstruction extends ResultingInstruction {
@@ -22,18 +23,17 @@ public abstract class BinaryInstruction extends ResultingInstruction {
         return operand2;
     }
 
-    public List<String> toARM(String op) {
+    public List<String> toARM(String op, HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
-        if (this.getOperand2().matches("-?//d+")) {
-            //TODO: Ask Keen about immediate bits. 12? 8?
-            if (Integer.parseInt(this.getOperand2()) > Math.pow(2, 12)) {
-                instructions.add("\tmovw t1, #lower16:" + getOperand2() +"\n");
-                instructions.add("\tmovt t1, #upper16:" + getOperand2() + "\n");
-                instructions.add("\t" + op + " " + this.getResult() + ", " + this.getOperand1() + ", t1\n");
-            }
+        if (isInteger(this.getOperand2()) && Math.abs(Integer.parseInt(this.getOperand2())) >= Math.pow(2, 8)) {
+            instructions.add("\tmovw t1, #lower16:" + getOperand2() +"\n");
+            instructions.add("\tmovt t1, #upper16:" + getOperand2() + "\n");
+            instructions.add("\t" + op + " " + this.getResult() + ", " + this.getOperand1() + ", t1\n");
         }
         else {
-            instructions.add("\t" + op + " " + this.getResult() + ", " + this.getOperand1() + ", " + this.getOperand2() + "\n");
+            String armOperand1 = armParamLookup(registerMap, this.getOperand1());
+            String armOperand2 = armParamLookup(registerMap, this.getOperand2());
+            instructions.add("\t" + op + " " + this.getResult() + ", " + armOperand1 + ", " + armOperand2 + "\n");
         }
 
         return instructions;

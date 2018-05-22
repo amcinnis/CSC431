@@ -1,5 +1,6 @@
 package LLVM;
 
+import java.util.HashMap;
 import java.util.List;
 
 public class ZeroExtendsInstruction extends ResultingInstruction {
@@ -20,7 +21,7 @@ public class ZeroExtendsInstruction extends ResultingInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         System.out.println("ZeroExtendsInstruction toARM()");
         return null;
     }

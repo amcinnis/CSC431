@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class ReturnVoidInstruction extends AbstractInstruction {
@@ -15,9 +16,9 @@ public class ReturnVoidInstruction extends AbstractInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
-        instructions.add("\tret\n");
+//        instructions.add("\tret\n");
         return instructions;
     }
 }

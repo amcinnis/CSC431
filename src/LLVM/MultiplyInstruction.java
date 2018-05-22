@@ -1,5 +1,6 @@
 package LLVM;
 
+import java.util.HashMap;
 import java.util.List;
 
 public class MultiplyInstruction extends BinaryInstruction {
@@ -14,7 +15,7 @@ public class MultiplyInstruction extends BinaryInstruction {
                 + this.getOperand2() + "\n";
     }
 
-    public List<String> toARM() {
-        return super.toARM("mul");
+    public List<String> toARM(HashMap<String, String> registerMap) {
+        return super.toARM("mul", registerMap);
     }
 }

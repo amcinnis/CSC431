@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class UnconditionalBranchInstruction extends AbstractInstruction {
@@ -17,7 +18,7 @@ public class UnconditionalBranchInstruction extends AbstractInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
         instructions.add("\tb ." + this.destination + "\n");
         return instructions;

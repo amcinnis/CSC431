@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class AddInstruction extends BinaryInstruction {
@@ -15,7 +16,7 @@ public class AddInstruction extends BinaryInstruction {
                 + this.getOperand2() + "\n";
     }
 
-    public List<String> toARM() {
-        return super.toARM("add");
+    public List<String> toARM(HashMap<String, String> registerMap) {
+        return super.toARM("add", registerMap);
     }
 }

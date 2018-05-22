@@ -99,16 +99,14 @@ public class LLVMGenerator {
 
     private void printNodeARM(AbstractCFGNode node) {
         try {
-            if (node.armStrings.size() > 0) {
-                for (String armInstruction : node.armStrings) {
-                    armWriter.write(armInstruction);
-                }
+            for (String armInstruction : node.armStrings) {
+                armWriter.write(armInstruction);
             }
-            for (Instruction instruction : node.instructions) {
-                for (String armInstruction : instruction.toARM()) {
-                    armWriter.write(armInstruction);
-                }
-            }
+//            for (Instruction instruction : node.instructions) {
+//                for (String armInstruction : instruction.toARM()) {
+//                    armWriter.write(armInstruction);
+//                }
+//            }
         }
         catch (IOException e) {
             e.printStackTrace();

@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class AllocateInstruction extends ResultingInstruction {
@@ -14,9 +15,9 @@ public class AllocateInstruction extends ResultingInstruction {
         return "\t" + this.getResult() + " = alloca " + this.getType() + "\n";
     }
 
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
-        //TODO: verify allocate is the same as LLVM.
+        //TODO: verify allocate is the same as LLVM. I think we just return an empty list (for now).
         return instructions;
     }
 }

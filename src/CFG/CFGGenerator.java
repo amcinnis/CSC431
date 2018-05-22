@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,6 +29,7 @@ public class CFGGenerator {
     private FileWriter llvmWriter;
     private FileWriter armWriter;
     private boolean stackOption;
+    private HashMap<String, String> registerMap;
 
     public CFGGenerator(String inputFile, Program program, boolean stackOption) {
         this.program = program;
@@ -42,6 +45,7 @@ public class CFGGenerator {
         this.llvmWriter = null;
         this.armWriter = null;
         this.stackOption = stackOption;
+        this.registerMap = new HashMap<>();
     }
 
     public void generate() {
@@ -216,47 +220,83 @@ public class CFGGenerator {
         //Generate function declaration in LLVM
         Type returnType = function.getRetType();
         List <Declaration> params = function.getParams();
+        List <Declaration> locals = function.getLocals();
         StringBuilder declaration = new StringBuilder("define " + typeToLLVM(returnType) + " @");
         declaration.append(functionName + "(");
-
-
-        //Generate LLVM for parameters
-        List <String> llvmParams = new ArrayList<>();
-        List <Instruction> allocateLLVM = new ArrayList<>();
-        for (Declaration param : params) {
-            Type paramType = param.getType();
-            String name = param.getName();
-            if (paramType instanceof IntType || paramType instanceof BoolType) {
-                llvmParams.add("i32 %" + name);
-                AllocateInstruction paramAlloc = new AllocateInstruction("%_P_" + name, "i32");
-                allocateLLVM.add(paramAlloc);
-                StoreInstruction paramStore = new StoreInstruction("i32", "%" + name, "%_P_" + name);
-                allocateLLVM.add(paramStore);
-            }
-            else if (paramType instanceof StructType) {
-                StructType structType = (StructType)paramType;
-                llvmParams.add("%struct." + structType.getName() + "* %" + name);
-                System.out.println("Time to create alloca instructions for struct parameters!");
-            }
-        }
-        declaration.append(String.join(", ", llvmParams) + ") ");
-
-        //Add function declaration and opening brace to entry node
-        graphEntry.llvmStrings.add(declaration.toString() + "\n");
-        graphEntry.llvmStrings.add("{\n");
-        graphEntry.llvmStrings.add(graphEntry.getLabel() + ":\n");
 
         //ARM Declaration
         graphEntry.armStrings.add("\t.align 2\n");
         graphEntry.armStrings.add("\t.global " + functionName + "\n");
         graphEntry.armStrings.add(functionName + ":\n");
         graphEntry.armStrings.add(graphEntry.getLabel() + ":\n");
+        graphEntry.armStrings.add("\tpush {fp, lr}\n");
+        graphEntry.armStrings.add("\tadd fp, sp, #4\n");
+
+        //Generate LLVM/ARM for parameters
+        List <String> llvmParams = new ArrayList<>();
+        List <Instruction> allocateLLVM = new ArrayList<>();
+        List <String> stackARM = new ArrayList<>();
+        int armParamReg = 0, frameSize = 4 * (params.size() + locals.size()), paramOffset = 0;
+        for (Declaration param : params) {
+            Type paramType = param.getType();
+            String name = param.getName();
+            if (paramType instanceof IntType || paramType instanceof BoolType) {
+                //LLVM
+                llvmParams.add("i32 %" + name);
+                AllocateInstruction paramAlloc = new AllocateInstruction("%_P_" + name, "i32");
+                allocateLLVM.add(paramAlloc);
+                StoreInstruction paramStore = new StoreInstruction("i32", "%" + name, "%_P_" + name);
+//                registerMap.put(paramStore.getPointer(), paramStore.getValue());
+                allocateLLVM.add(paramStore);
+
+                //ARM
+                //Map param name to respective register. For example:
+                //func(i32 one, i32 two) -> key: one, value: r0; key: two, value: r1
+//                this.registerMap.put(paramStore.getValue(), "r" + Integer.toString(armParamReg)); TODO: account for target register
+                this.registerMap.put(paramStore.getPointer(), "[fp, #-" + Integer.toString(frameSize + paramOffset)
+                        + "]");
+                stackARM.addAll(paramStore.toARM(registerMap));
+                //TODO: move outside of if statement to account for struct params
+                armParamReg++;
+                paramOffset += 4;
+
+//                graphEntry.armStrings.add("\tmov %" + name + ", r" + armParamReg++ + "\n");
+
+            }
+            else if (paramType instanceof StructType) {
+                //TODO: implement LLVM/ARM for struct params
+                //LLVM
+                StructType structType = (StructType)paramType;
+                llvmParams.add("%struct." + structType.getName() + "* %" + name);
+                System.out.println("Time to create alloca instructions for struct parameters!");
+
+                //ARM
+            }
+        }
+        declaration.append(String.join(", ", llvmParams) + ") ");
+
+        //ARM stack setup for parameters
+        List<String> reglist = null;
+        if (armParamReg - 1 >= 4) {
+            reglist = new ArrayList<>();
+            for (int i = 4; i < armParamReg; i++) {
+                reglist.add("r" + Integer.toString(i));
+            }
+            graphEntry.armStrings.add("\t push {" + String.join(", ", reglist) + "}\n");
+        }
+
+        //Add function declaration and opening brace to entry node
+        graphEntry.llvmStrings.add(declaration.toString() + "\n");
+        graphEntry.llvmStrings.add("{\n");
+        graphEntry.llvmStrings.add(graphEntry.getLabel() + ":\n");
+
 
         //Generate LLVM for return type
         if (returnType instanceof VoidType) {
             ReturnVoidInstruction returnVoidInstruction = new ReturnVoidInstruction();
             graphExit.instructions.add(returnVoidInstruction);
             graphExit.llvmStrings.add(returnVoidInstruction.toString());
+            graphExit.armStrings.addAll(returnVoidInstruction.toARM(registerMap));
         }
         else {
             //Allocate space on stack for return value
@@ -270,33 +310,46 @@ public class CFGGenerator {
             AllocateInstruction returnAllocateInstruction = new AllocateInstruction("%_retval_", retTypeString);
             graphEntry.instructions.add(returnAllocateInstruction);
             graphEntry.llvmStrings.add(returnAllocateInstruction.toString());
+            graphEntry.armStrings.addAll(returnAllocateInstruction.toARM(registerMap));
         }
 
         //Grab previously stored instructions and write them to entry node
         graphEntry.instructions.addAll(allocateLLVM);
         List<String> paramStrings = allocateLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
         graphEntry.llvmStrings.addAll(paramStrings);
+//        graphEntry.armStrings.addAll(allocateLLVM.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
+//                .collect(Collectors.toList()));
 
         //Generate LLVM for local variables
-        List <Declaration> locals = function.getLocals();
         Type localType;
         for (Declaration local : locals) {
             AllocateInstruction allocateInstruction = null;
             localType = local.getType();
             if (localType instanceof IntType || localType instanceof BoolType) {
                 allocateInstruction = new AllocateInstruction("%" + local.getName(), "i32");
+                this.registerMap.put(allocateInstruction.getResult(), "[fp, #-" + Integer.toString(frameSize + paramOffset)
+                        + "]");
+                paramOffset += 4;
             }
             else if (localType instanceof StructType) {
                 StructType structType = (StructType)localType;
                 allocateInstruction = new AllocateInstruction("%" + local.getName(),
                         "%struct." + structType.getName() + "*");
+                this.registerMap.put(allocateInstruction.getResult(), "[fp, #-" + Integer.toString(frameSize + paramOffset)
+                        + "]");
+                paramOffset += 4;
             }
             else {
                 System.out.println("Error! Reached VoidType when generating local variables LLVM!");
             }
             graphEntry.instructions.add(allocateInstruction);
             graphEntry.llvmStrings.add(allocateInstruction.toString());
+            graphEntry.armStrings.addAll(allocateInstruction.toARM(registerMap));
         }
+
+        //ARM stack setup for frame size (params and locals)
+        graphEntry.armStrings.add("\tsub sp, sp, #" + Integer.toString(frameSize) + "\n");
+        graphEntry.armStrings.addAll(stackARM);
 
         //Iterate through all statements
         for (Statement statement : statements) {
@@ -307,9 +360,10 @@ public class CFGGenerator {
         if (!(returnType instanceof VoidType)) {
             //Load return value in exit node
             LoadInstruction load = new LoadInstruction(newRegLabel(), typeToLLVM(returnType) + "*", "%_retval_");
+//            registerMap.put(load.getResult(), load.getPointer());
             graphExit.instructions.add(load);
             graphExit.llvmStrings.add(load.toString());
-            graphExit.armStrings.addAll(load.toARM());
+            graphExit.armStrings.addAll(load.toARM(registerMap));
             //Strip tailing '*'
             String type = load.getType();
             if (type.equals("i32*")) {
@@ -318,7 +372,7 @@ public class CFGGenerator {
             ReturnInstruction ret = new ReturnInstruction(type, load.getResult());
             graphExit.instructions.add(ret);
             graphExit.llvmStrings.add(ret.toString());
-            graphExit.armStrings.addAll(ret.toARM());
+            graphExit.armStrings.addAll(ret.toARM(registerMap));
         }
 
 
@@ -331,7 +385,7 @@ public class CFGGenerator {
                     UnconditionalBranchInstruction finalBranch = new UnconditionalBranchInstruction(graphExit.getLabel());
                     node.instructions.add(finalBranch);
                     node.llvmStrings.add(finalBranch.toString());
-                    node.armStrings.addAll(finalBranch.toARM());
+                    node.armStrings.addAll(finalBranch.toARM(registerMap));
                 }
             }
 
@@ -345,6 +399,12 @@ public class CFGGenerator {
         }
 
         graphExit.llvmStrings.add("}\n\n");
+        if (reglist != null) {
+            graphExit.armStrings.add("\tpop {" + String.join(", ", reglist) + "}\n");
+        }
+        graphExit.armStrings.add("\tadd sp, sp, #" + Integer.toString(frameSize) + "\n");
+        graphExit.armStrings.add("\tpop {fp, pc}\n");
+        graphExit.armStrings.add("\t.size " + functionName + ", .-" + functionName +"\n");
 
         return graph;
     }
@@ -403,15 +463,20 @@ public class CFGGenerator {
                 }
             }
 
-            //Get Statement
-            String miniString = getInstruction(statement);
-            //Store Mini Statement
-            ((CFGNode)current).miniStatements.add(miniString);
-            //Generate LLVM for instruction
-            List<Instruction> instructions = generateLLVMInstruction(statement);
-            ((CFGNode)current).instructions.addAll(instructions);
-            List<String> llvmStrings = instructions.stream().map(Instruction::toString).collect(Collectors.toList());
-            ((CFGNode)current).llvmStrings.addAll(llvmStrings);
+            if (current instanceof CFGNode) {
+                CFGNode currentNode = (CFGNode)current;
+                //Get Statement
+                String miniString = getInstruction(statement);
+                //Store Mini Statement
+                currentNode.miniStatements.add(miniString);
+                //Generate LLVM for instruction
+                List<Instruction> instructions = generateLLVMInstruction(statement);
+                currentNode.instructions.addAll(instructions);
+                List<String> llvmStrings = instructions.stream().map(Instruction::toString).collect(Collectors.toList());
+                currentNode.llvmStrings.addAll(llvmStrings);
+                currentNode.armStrings.addAll(instructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
+                        .collect(Collectors.toList()));
+            }
         }
 
         return current;
@@ -426,6 +491,7 @@ public class CFGGenerator {
                 new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
         whileNode.instructions.add(branch);
         whileNode.llvmStrings.add(branch.toString());
+        whileNode.armStrings.addAll(branch.toARM(registerMap));
 
         //Body CFGNode
         CFGNode body = (CFGNode)whileNode.body;
@@ -433,6 +499,7 @@ public class CFGGenerator {
         branch = new ConditionalBranchInstruction(result.getResult(), bodyLabel, nextLabel);
         body.instructions.add(branch);
         body.llvmStrings.add(branch.toString());
+        body.armStrings.addAll(branch.toARM(registerMap));
 
     }
 
@@ -440,10 +507,12 @@ public class CFGGenerator {
         ConditionalCFGNode newNode = new ConditionalCFGNode(newLabel(), conditional.getGuard());
 
         //Guard LLVM
-        List<Instruction> guardLLVM = generateLLVMFromExpression(conditional.getGuard());
-        newNode.instructions.addAll(guardLLVM);
-        List<String> guardStrings = guardLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
+        List<Instruction> guardInstructions = generateLLVMFromExpression(conditional.getGuard());
+        newNode.instructions.addAll(guardInstructions);
+        List<String> guardStrings = guardInstructions.stream().map(Instruction::toString).collect(Collectors.toList());
         newNode.llvmStrings.addAll(guardStrings);
+        newNode.armStrings.addAll(guardInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
+                .collect(Collectors.toList()));
 
         //CFG
         if (current instanceof CFGNode) {
@@ -452,6 +521,7 @@ public class CFGGenerator {
             UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(newNode.getLabel());
             cfgNode.instructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
+            cfgNode.armStrings.addAll(branch.toARM(registerMap));
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
@@ -504,7 +574,7 @@ public class CFGGenerator {
         }
 
         //Generate guard branch LLVM instruction
-        CompareInstruction compareInstruction = (CompareInstruction)guardLLVM.get(guardLLVM.size()-1);
+        CompareInstruction compareInstruction = (CompareInstruction)guardInstructions.get(guardInstructions.size()-1);
         String condition = compareInstruction.getResult();
         String thenLabel = ((AbstractCFGNode) newNode.thenNode).getLabel();
         String elseLabel = (newNode.elseNode != null) ?
@@ -512,6 +582,7 @@ public class CFGGenerator {
         ConditionalBranchInstruction branch = new ConditionalBranchInstruction(condition, thenLabel, elseLabel);
         newNode.instructions.add(branch);
         newNode.llvmStrings.add(branch.toString());
+        newNode.armStrings.addAll(branch.toARM(registerMap));
 
         return joinNode;
     }
@@ -521,16 +592,19 @@ public class CFGGenerator {
         WhileCFGNode newNode = new WhileCFGNode(newLabel(), guard);
 
         //Guard LLVM
-        List<Instruction> guardLLVM = generateLLVMFromExpression(guard);
-        List<String> guardStrings = guardLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
-        newNode.instructions.addAll(guardLLVM);
+        List<Instruction> guardInstructions = generateLLVMFromExpression(guard);
+        List<String> guardStrings = guardInstructions.stream().map(Instruction::toString).collect(Collectors.toList());
+        newNode.instructions.addAll(guardInstructions);
         newNode.llvmStrings.addAll(guardStrings);
+        newNode.armStrings.addAll(guardInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
+                .collect(Collectors.toList()));
 
         if (current instanceof CFGNode) {
             CFGNode cfgNode = (CFGNode)current;
             UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(newNode.getLabel());
             cfgNode.instructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
+            cfgNode.armStrings.addAll(branch.toARM(registerMap));
             ((CFGNode) current).next = newNode;
         }
         else if (current instanceof ConditionalCFGNode) {
@@ -560,10 +634,13 @@ public class CFGGenerator {
 
         if (bodyEnd instanceof CFGNode) {
             CFGNode bodyNode = (CFGNode)bodyEnd;
-            List<Instruction> bodyGuardLLVM = generateLLVMFromExpression(guard);
-            List<String> bodyGuardStrings = bodyGuardLLVM.stream().map(Instruction::toString).collect(Collectors.toList());
-            bodyNode.instructions.addAll(bodyGuardLLVM);
+            List<Instruction> bodyGuardInstructions = generateLLVMFromExpression(guard);
+            List<String> bodyGuardStrings = bodyGuardInstructions.stream().map(Instruction::toString)
+                    .collect(Collectors.toList());
+            bodyNode.instructions.addAll(bodyGuardInstructions);
             bodyNode.llvmStrings.addAll(bodyGuardStrings);
+            bodyNode.armStrings.addAll(bodyGuardInstructions.stream().map(x -> x.toARM(registerMap))
+                    .flatMap(List::stream).collect(Collectors.toList()));
             bodyNode.next = newNode;
         }
         else {
@@ -613,6 +690,7 @@ public class CFGGenerator {
             }
             StoreInstruction storeResult = new StoreInstruction(type,
                     result, "%_retval_");
+            registerMap.put(storeResult.getPointer(), storeResult.getValue());
             instructions.add(storeResult);
 
             //Generate UnconditionalBranch to graphExit
@@ -662,7 +740,7 @@ public class CFGGenerator {
                     LvalueId value = (LvalueId)target;
                     args.add("i32* %" + value.getId());
                 }
-                CallInstruction call = new CallInstruction(null, "i32 (i8*, ...)*", "@scanf", args);
+                CallInstruction call = new CallInstruction(null, "i32 (i8*, ...)*", "scanf", args);
                 instructions.add(call);
             }
         }
@@ -685,7 +763,7 @@ public class CFGGenerator {
             instructions.add(bitcast);
             List<String> functionArgs = new ArrayList<>();
             functionArgs.add(bitcast.getType() + " " + bitcast.getResult());
-            CallInstruction call = new CallInstruction(null, "void", "@free", functionArgs);
+            CallInstruction call = new CallInstruction(null, "void", "free", functionArgs);
             instructions.add(call);
         }
         else if (statement instanceof PrintLnStatement) {
@@ -701,7 +779,7 @@ public class CFGGenerator {
                 type = type.substring(0, type.length() - 1);
             }
             args.add(type + " " + result.getResult());
-            CallInstruction call = new CallInstruction(null, "i32 (i8*, ...)*", "@printf", args);
+            CallInstruction call = new CallInstruction(null, "i32 (i8*, ...)*", "printf", args);
             instructions.add(call);
         }
         else {
@@ -856,7 +934,7 @@ public class CFGGenerator {
             String structId = newExpression.getId();
             argsList.add("i32 " + getStructSize(structId));
             CallInstruction callInstruction = new CallInstruction(newRegLabel(), "i8*",
-                    "@malloc", argsList);
+                    "malloc", argsList);
             instructions.add(callInstruction);
 
             String oldType = callInstruction.getType();
@@ -897,12 +975,12 @@ public class CFGGenerator {
             Type returnType = getInvocationReturnType(invocation.getName());
             CallInstruction call;
             if (returnType instanceof VoidType) {
-                call = new CallInstruction(null, "void", "@"+invocation.getName(), argsLLVM);
+                call = new CallInstruction(null, "void", invocation.getName(), argsLLVM);
                 instructions.add(call);
             }
             else if (returnType instanceof IntType || returnType instanceof BoolType) {
                 call = new CallInstruction(newRegLabel(), typeToLLVM(returnType),
-                        "@"+invocation.getName(), argsLLVM);
+                        invocation.getName(), argsLLVM);
                 instructions.add(call);
             }
             else if (returnType instanceof StructType) {
@@ -1066,7 +1144,10 @@ public class CFGGenerator {
         for (Declaration param : params) {
             if (id.equals(param.getName())) {
                 Type type = param.getType();
-                return new LoadInstruction(newRegLabel(), typeToLLVM(type) + "*", "%_P_" + id);
+                LoadInstruction load = new LoadInstruction(newRegLabel(), typeToLLVM(type) + "*",
+                        "%_P_" + id);
+//                registerMap.put(load.getResult(), load.getPointer());
+                return load;
             }
         }
 

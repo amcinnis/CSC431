@@ -1,5 +1,6 @@
 package LLVM;
 
+import java.util.HashMap;
 import java.util.List;
 
 public class ANDInstruction extends BinaryInstruction {
@@ -15,7 +16,7 @@ public class ANDInstruction extends BinaryInstruction {
     }
 
     @Override
-    public List<String> toARM() {
-        return super.toARM("and");
+    public List<String> toARM(HashMap<String, String> registerMap) {
+        return super.toARM("and", registerMap);
     }
 }

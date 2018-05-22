@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class StoreInstruction extends AbstractInstruction {
@@ -33,9 +34,11 @@ public class StoreInstruction extends AbstractInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
-        instructions.add("\tstr " + this.pointer + ", " + this.value + "\n");
+        String armValue = armParamLookup(registerMap, this.value);
+        String armPointer = armParamLookup(registerMap, this.pointer);
+        instructions.add("\tstr " + armValue + ", " + armPointer + "\n");
         return instructions;
     }
 }

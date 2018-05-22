@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class LoadInstruction extends ResultingInstruction {
@@ -22,9 +23,12 @@ public class LoadInstruction extends ResultingInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
-        instructions.add("\tldr " + this.getResult() + ", " + this.pointer + "\n");
+        String armResult = armParamLookup(registerMap, this.getResult());
+        String armPointer = armParamLookup(registerMap, this.getPointer());
+        instructions.add("\tldr " + armResult + ", " + armPointer + "\n");
+//        registerMap.put(this.getResult(), this.pointer);
         return instructions;
     }
 }

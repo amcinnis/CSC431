@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class BitcastInstruction extends ResultingInstruction {
@@ -28,9 +29,10 @@ public class BitcastInstruction extends ResultingInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
         instructions.add("\tmov " + this.getResult() + ", " + this.value + "\n");
+        registerMap.put(this.value, this.getResult());
         return instructions;
     }
 }

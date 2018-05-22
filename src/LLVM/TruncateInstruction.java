@@ -1,5 +1,6 @@
 package LLVM;
 
+import java.util.HashMap;
 import java.util.List;
 
 public class TruncateInstruction extends ResultingInstruction {
@@ -14,7 +15,7 @@ public class TruncateInstruction extends ResultingInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         System.out.println("TruncateInstruction toARM()");
         return null;
     }

@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class CompareInstruction extends ResultingInstruction {
@@ -22,10 +23,12 @@ public class CompareInstruction extends ResultingInstruction {
         return "\t" + getResult() + " = icmp " + conditionCode + " " + this.getType() + " " + operand1 + ", " + operand2 + "\n";
     }
 
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
         instructions.add("\tmov " + this.getResult() + ", #0\n");
-        instructions.add("\tcmp " + this.operand1 + ", " + this.operand2 + "\n");
+        String armOperand1 = armParamLookup(registerMap, this.operand1);
+        String armOperand2 = armParamLookup(registerMap, this.operand2);
+        instructions.add("\tcmp " + armOperand1 + ", " + armOperand2 + "\n");
         String movCode = null;
         switch (this.conditionCode) {
             case "eq":

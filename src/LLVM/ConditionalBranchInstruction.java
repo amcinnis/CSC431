@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class ConditionalBranchInstruction extends AbstractInstruction {
@@ -21,7 +22,7 @@ public class ConditionalBranchInstruction extends AbstractInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
         instructions.add("\tcmp " + this.condition + ", #1\n");
         instructions.add("\tbeq ." + this.thenLabel + "\n");

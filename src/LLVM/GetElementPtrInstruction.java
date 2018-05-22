@@ -1,6 +1,7 @@
 package LLVM;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class GetElementPtrInstruction extends ResultingInstruction {
@@ -21,9 +22,20 @@ public class GetElementPtrInstruction extends ResultingInstruction {
     }
 
     @Override
-    public List<String> toARM() {
+    public List<String> toARM(HashMap<String, String> registerMap) {
         List<String> instructions = new ArrayList<>();
-        instructions.add("\tadd " + this.getResult() + ", " + this.pointerValue + ", #8\n");
+//        instructions.add("\tadd " + this.getResult() + ", " + this.pointerValue + ", #8\n");
+        String armOperand1 = armParamLookup(registerMap, this.pointerValue);
+        if (isInteger(this.index)) {
+            int offset = Integer.parseInt(this.index);
+            if (offset > 0) {
+                instructions.add("\tadd " + this.getResult() + ", " + armOperand1 + ", #" +
+                        Integer.toString(4*offset) + "\n");
+            }
+            else {
+                instructions.add("\tmov " + this.getResult() + ", " + armOperand1 + "\n");
+            }
+        }
         return instructions;
     }
 }
