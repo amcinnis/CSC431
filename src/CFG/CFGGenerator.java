@@ -392,11 +392,12 @@ public class CFGGenerator {
             }
 
             node.next = graphExit;
-
+            connectPredecessor(node, graphExit);
         }
         else if (current instanceof WhileCFGNode) {
             WhileCFGNode whileNode = (WhileCFGNode)current;
             whileNode.next = graphExit;
+            connectPredecessor(whileNode, graphExit);
             generateWhileBranches(whileNode);
         }
 
@@ -409,6 +410,15 @@ public class CFGGenerator {
         graphExit.armStrings.add("\t.size " + functionName + ", .-" + functionName +"\n");
 
         return graph;
+    }
+
+    private void connectPredecessor(Node predecessor, AbstractCFGNode node) {
+        if (node.pred0 == null) {
+            node.pred0 = predecessor;
+        }
+        else {
+            node.pred1 = predecessor;
+        }
     }
 
     private Node processStatement(Statement statement, Node current) {
@@ -437,11 +447,13 @@ public class CFGGenerator {
                 if (conditionalNode.thenNode == null) {
                     CFGNode newNode = new CFGNode(newLabel());
                     conditionalNode.thenNode = newNode;
+                    connectPredecessor(conditionalNode, newNode);
                     current = newNode;
                 }
                 else if (conditionalNode.elseNode == null) {
                     CFGNode newNode = new CFGNode(newLabel());
                     conditionalNode.elseNode = newNode;
+                    connectPredecessor(conditionalNode, newNode);
                     current = newNode;
                 }
                 else {
@@ -453,10 +465,12 @@ public class CFGGenerator {
                 CFGNode newNode = new CFGNode(newLabel());
                 if (whileNode.body == null) {
                     whileNode.body = newNode;
+                    connectPredecessor(whileNode, newNode);
                     current = newNode;
                 }
                 else if (whileNode.next == null) {
                     whileNode.next = newNode;
+                    connectPredecessor(whileNode, newNode);
                     generateWhileBranches(whileNode);
                     current = newNode;
                 }
@@ -520,6 +534,7 @@ public class CFGGenerator {
         if (current instanceof CFGNode) {
             CFGNode cfgNode = (CFGNode)current;
             cfgNode.next = newNode;
+            connectPredecessor(cfgNode, newNode);
             UnconditionalBranchInstruction branch = new UnconditionalBranchInstruction(newNode.getLabel());
             cfgNode.instructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
@@ -529,9 +544,11 @@ public class CFGGenerator {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
             if (conditionalNode.thenNode == null) {
                 conditionalNode.thenNode = newNode;
+                connectPredecessor(conditionalNode, newNode);
             }
             else if (conditionalNode.elseNode == null) {
                 conditionalNode.elseNode = newNode;
+                connectPredecessor(conditionalNode, newNode);
             }
             else {
                 System.out.println("processConditional conditionalNode's then/else both not null!");
@@ -541,9 +558,11 @@ public class CFGGenerator {
             WhileCFGNode whileNode = (WhileCFGNode) current;
             if (whileNode.body == null) {
                 whileNode.body = newNode;
+                connectPredecessor(whileNode, newNode);
             }
             else if (whileNode.next == null) {
                 whileNode.next = newNode;
+                connectPredecessor(whileNode, newNode);
                 generateWhileBranches(whileNode);
             }
             else {
@@ -567,12 +586,18 @@ public class CFGGenerator {
         CFGNode joinNode = new CFGNode(newJoinLabel());
         if (thenEnd instanceof CFGNode) {
             ((CFGNode) thenEnd).next = joinNode;
+            connectPredecessor(thenEnd, joinNode);
         }
         else {
             System.out.println("thenNode in conditional not instanceof CFGNode");
         }
         if (elseEnd instanceof CFGNode) {
             ((CFGNode) elseEnd).next = joinNode;
+            connectPredecessor(elseEnd, joinNode);
+        }
+        else {
+            newNode.elseNode = joinNode;
+            connectPredecessor(newNode, joinNode);
         }
 
         //Generate guard branch LLVM instruction
@@ -608,15 +633,18 @@ public class CFGGenerator {
             cfgNode.llvmStrings.add(branch.toString());
             cfgNode.armStrings.addAll(branch.toARM(registerMap));
             ((CFGNode) current).next = newNode;
+            connectPredecessor(current, newNode);
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
             //TODO: Create Unconditional Branch?
             if (conditionalNode.thenNode == null) {
                 conditionalNode.thenNode = newNode;
+                connectPredecessor(conditionalNode, newNode);
             }
             else if (conditionalNode.elseNode == null) {
                 conditionalNode.elseNode = newNode;
+                connectPredecessor(conditionalNode, newNode);
             }
             else {
                 System.out.println("processWhile conditional's then/else branches both full!");
@@ -626,6 +654,7 @@ public class CFGGenerator {
             WhileCFGNode whileNode = (WhileCFGNode)current;
             //TODO: Create Unconditional Branch?
             whileNode.body = newNode;
+            connectPredecessor(whileNode, newNode);
         }
         else {
             System.out.println("processWhile received unexpected Node as current");
@@ -644,6 +673,7 @@ public class CFGGenerator {
             bodyNode.armStrings.addAll(bodyGuardInstructions.stream().map(x -> x.toARM(registerMap))
                     .flatMap(List::stream).collect(Collectors.toList()));
             bodyNode.next = newNode;
+            connectPredecessor(bodyNode, newNode);
         }
         else {
             System.out.println("Body of while not instanceof CFGNode");

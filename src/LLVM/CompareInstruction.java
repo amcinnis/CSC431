@@ -48,6 +48,7 @@ public class CompareInstruction extends ResultingInstruction {
                 break;
             case "sle":
                 movCode = "le";
+                break;
             default:
                 System.out.println("Unimplemented conditionCode case in CompareInstruction toARM!");
                 break;
