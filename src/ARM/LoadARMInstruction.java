@@ -9,4 +9,9 @@ public class LoadARMInstruction extends AbstractARMInstruction {
         this.operand1 = operand1;
         this.operand2 = operand2;
     }
+
+    @Override
+    public String toString() {
+        return "\tldr " + this.operand1 + ", " + this.operand2 + "\n";
+    }
 }

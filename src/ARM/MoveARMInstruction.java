@@ -17,4 +17,14 @@ public class MoveARMInstruction extends AbstractARMInstruction {
         this.operand1 = operand1;
         this.operand2 = operand2;
     }
+
+    @Override
+    public String toString() {
+        if (this.code == null) {
+            return "\tmov " + this.operand1 + ", " + this.operand2 + "\n";
+        }
+        else {
+            return "\tmov"+ this.code + " " + this.operand1 + ", " + this.operand2 + "\n";
+        }
+    }
 }

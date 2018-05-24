@@ -1,5 +1,8 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+import ARM.MoveARMInstruction;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,9 +32,10 @@ public class BitcastLLVMInstruction extends ResultingLLVMInstruction {
     }
 
     @Override
-    public List<String> toARM(HashMap<String, String> registerMap) {
-        List<String> instructions = new ArrayList<>();
-        instructions.add("\tmov " + this.getResult() + ", " + this.value + "\n");
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
+        List<ARMInstruction> instructions = new ArrayList<>();
+//        instructions.add("\tmov " + this.getResult() + ", " + this.value + "\n");
+        instructions.add(new MoveARMInstruction(this.getResult(), this.value));
         registerMap.put(this.value, this.getResult());
         return instructions;
     }

@@ -9,4 +9,9 @@ public class PushARMInstruction extends AbstractARMInstruction {
     public PushARMInstruction(List<String> regList) {
         this.regList = regList;
     }
+
+    @Override
+    public String toString() {
+        return "\tpush {" + String.join(", ", this.regList) + "}\n";
+    }
 }

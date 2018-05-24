@@ -1,5 +1,7 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+import ARM.ARMString;
 import CFG.*;
 
 import java.io.FileWriter;
@@ -99,8 +101,8 @@ public class LLVMGenerator {
 
     private void printNodeARM(AbstractCFGNode node) {
         try {
-            for (String armInstruction : node.armStrings) {
-                armWriter.write(armInstruction);
+            for (ARMInstruction armInstruction : node.ARMInstructions) {
+                armWriter.write(armInstruction.toString());
             }
 //            for (Instruction instruction : node.instructions) {
 //                for (String armInstruction : instruction.toARM()) {
@@ -159,6 +161,7 @@ public class LLVMGenerator {
         node.llvmStrings.add("@.print = private unnamed_addr constant [5 x i8] c\"%ld \\00\", align 1\n");
         node.llvmStrings.add("@.read = private unnamed_addr constant [4 x i8] c\"%ld\\00\", align 1\n");
         node.llvmStrings.add("@.read_scratch = common global i32 0, align 8\n");
+        node.ARMInstructions.add(new ARMString("\t.global __aeabi_idiv\n"));
         printNode(node);
     }
 }

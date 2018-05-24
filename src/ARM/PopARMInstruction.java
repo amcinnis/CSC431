@@ -9,4 +9,9 @@ public class PopARMInstruction extends AbstractARMInstruction {
     public PopARMInstruction(List<String> regList) {
         this.regList = regList;
     }
+
+    @Override
+    public String toString() {
+        return "\tpop {" + String.join(", ", this.regList) + "}\n";
+    }
 }

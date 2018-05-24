@@ -15,4 +15,13 @@ public class BranchARMInstruction extends AbstractARMInstruction {
         this.code = code;
     }
 
+    @Override
+    public String toString() {
+        if (this.code == null) {
+            return "\tb " + this.label + "\n";
+        }
+        else {
+            return "\tb" + this.code + " " + this.label + "\n";
+        }
+    }
 }

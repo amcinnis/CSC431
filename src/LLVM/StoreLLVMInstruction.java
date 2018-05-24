@@ -1,5 +1,8 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+import ARM.StoreARMInstruction;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,11 +37,12 @@ public class StoreLLVMInstruction extends AbstractLLVMInstruction {
     }
 
     @Override
-    public List<String> toARM(HashMap<String, String> registerMap) {
-        List<String> instructions = new ArrayList<>();
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
+        List<ARMInstruction> instructions = new ArrayList<>();
         String armValue = armParamLookup(registerMap, this.value);
         String armPointer = armParamLookup(registerMap, this.pointer);
-        instructions.add("\tstr " + armValue + ", " + armPointer + "\n");
+//        instructions.add("\tstr " + armValue + ", " + armPointer + "\n");
+        instructions.add(new StoreARMInstruction(armValue, armPointer));
         return instructions;
     }
 }

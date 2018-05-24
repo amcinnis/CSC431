@@ -1,5 +1,7 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+
 import java.util.HashMap;
 import java.util.List;
 
@@ -15,7 +17,7 @@ public class PhiLLVMInstruction extends ResultingLLVMInstruction {
     }
 
     @Override
-    public List<String> toARM(HashMap<String, String> registerMap) {
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
         System.out.println("PhiLLVMInstruction toARM()");
         return null;
     }

@@ -1,5 +1,6 @@
 package CFG;
 
+import ARM.*;
 import LLVM.*;
 import ast.*;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -137,6 +139,7 @@ public class CFGGenerator {
         //Generate 32bit architecture instruction
         this.globalLLVM.add("target triple=\"i686\"\n");
 
+        //TODO: Change globalARM from <String> to <ARMInstruction>
         //ARM v7 Architecture
         this.globalARM.add("\t.arch armv7-a\n");
 
@@ -226,17 +229,23 @@ public class CFGGenerator {
         declaration.append(functionName + "(");
 
         //ARM Declaration
-        graphEntry.armStrings.add("\t.align 2\n");
-        graphEntry.armStrings.add("\t.global " + functionName + "\n");
-        graphEntry.armStrings.add(functionName + ":\n");
-        graphEntry.armStrings.add(graphEntry.getLabel() + ":\n");
-        graphEntry.armStrings.add("\tpush {fp, lr}\n");
-        graphEntry.armStrings.add("\tadd fp, sp, #4\n");
+//        graphEntry.armStrings.add("\t.align 2\n");
+        graphEntry.ARMInstructions.add(new ARMString("\t.align 2\n"));
+//        graphEntry.armStrings.add("\t.global " + functionName + "\n");
+        graphEntry.ARMInstructions.add(new ARMString("\t.global " + functionName + "\n"));
+//        graphEntry.armStrings.add(functionName + ":\n");
+        graphEntry.ARMInstructions.add(new ARMString(functionName + ":\n"));
+//        graphEntry.armStrings.add(graphEntry.getLabel() + ":\n");
+        graphEntry.ARMInstructions.add(new ARMString(graphEntry.getLabel() + ":\n"));
+//        graphEntry.armStrings.add("\tpush {fp, lr}\n");
+        graphEntry.ARMInstructions.add(new PushARMInstruction(new ArrayList<>(Arrays.asList("fp", "lr"))));
+//        graphEntry.armStrings.add("\tadd fp, sp, #4\n");
+        graphEntry.ARMInstructions.add(new AddARMInstruction("fp", "sp", "#4"));
 
         //Generate LLVM/ARM for parameters
         List <String> llvmParams = new ArrayList<>();
         List <LLVMInstruction> allocateLLVM = new ArrayList<>();
-        List <String> stackARM = new ArrayList<>();
+        List <ARMInstruction> stackARM = new ArrayList<>();
         int armParamReg = 0, frameSize = 4 * (params.size() + locals.size()), paramOffset = 0;
         for (Declaration param : params) {
             Type paramType = param.getType();
@@ -283,7 +292,8 @@ public class CFGGenerator {
             for (int i = 4; i < armParamReg; i++) {
                 reglist.add("r" + Integer.toString(i));
             }
-            graphEntry.armStrings.add("\t push {" + String.join(", ", reglist) + "}\n");
+//            graphEntry.armStrings.add("\t push {" + String.join(", ", reglist) + "}\n");
+            graphEntry.ARMInstructions.add(new PushARMInstruction(reglist));
         }
 
         //Add function declaration and opening brace to entry node
@@ -297,7 +307,8 @@ public class CFGGenerator {
             ReturnVoidLLVMInstruction returnVoidInstruction = new ReturnVoidLLVMInstruction();
             graphExit.LLVMInstructions.add(returnVoidInstruction);
             graphExit.llvmStrings.add(returnVoidInstruction.toString());
-            graphExit.armStrings.addAll(returnVoidInstruction.toARM(registerMap));
+//            graphExit.armStrings.addAll(returnVoidInstruction.toARM(registerMap));
+            graphExit.ARMInstructions.addAll(returnVoidInstruction.toARM(registerMap));
         }
         else {
             //Allocate space on stack for return value
@@ -311,7 +322,8 @@ public class CFGGenerator {
             AllocateLLVMInstruction returnAllocateInstruction = new AllocateLLVMInstruction("%_retval_", retTypeString);
             graphEntry.LLVMInstructions.add(returnAllocateInstruction);
             graphEntry.llvmStrings.add(returnAllocateInstruction.toString());
-            graphEntry.armStrings.addAll(returnAllocateInstruction.toARM(registerMap));
+//            graphEntry.armStrings.addAll(returnAllocateInstruction.toARM(registerMap));
+            graphEntry.ARMInstructions.addAll(returnAllocateInstruction.toARM(registerMap));
         }
 
         //Grab previously stored LLVMInstructions and write them to entry node
@@ -345,12 +357,16 @@ public class CFGGenerator {
             }
             graphEntry.LLVMInstructions.add(allocateInstruction);
             graphEntry.llvmStrings.add(allocateInstruction.toString());
-            graphEntry.armStrings.addAll(allocateInstruction.toARM(registerMap));
+//            graphEntry.armStrings.addAll(allocateInstruction.toARM(registerMap));
+            graphEntry.ARMInstructions.addAll(allocateInstruction.toARM(registerMap));
         }
 
         //ARM stack setup for frame size (params and locals)
-        graphEntry.armStrings.add("\tsub sp, sp, #" + Integer.toString(frameSize) + "\n");
-        graphEntry.armStrings.addAll(stackARM);
+//        graphEntry.armStrings.add("\tsub sp, sp, #" + Integer.toString(frameSize) + "\n");
+        graphEntry.ARMInstructions.add(new SubtractARMInstruction("sp", "sp",
+                "#" + Integer.toString(frameSize)));
+//        graphEntry.armStrings.addAll(stackARM);
+        graphEntry.ARMInstructions.addAll(stackARM);
 
         //Iterate through all statements
         for (Statement statement : statements) {
@@ -364,7 +380,8 @@ public class CFGGenerator {
 //            registerMap.put(load.getResult(), load.getPointer());
             graphExit.LLVMInstructions.add(load);
             graphExit.llvmStrings.add(load.toString());
-            graphExit.armStrings.addAll(load.toARM(registerMap));
+//            graphExit.armStrings.addAll(load.toARM(registerMap));
+            graphExit.ARMInstructions.addAll(load.toARM(registerMap));
             //Strip tailing '*'
             String type = load.getType();
             if (type.equals("i32*")) {
@@ -373,7 +390,8 @@ public class CFGGenerator {
             ReturnLLVMInstruction ret = new ReturnLLVMInstruction(type, load.getResult());
             graphExit.LLVMInstructions.add(ret);
             graphExit.llvmStrings.add(ret.toString());
-            graphExit.armStrings.addAll(ret.toARM(registerMap));
+//            graphExit.armStrings.addAll(ret.toARM(registerMap));
+            graphExit.ARMInstructions.addAll(ret.toARM(registerMap));
         }
 
 
@@ -386,7 +404,8 @@ public class CFGGenerator {
                     UnconditionalBranchLLVMInstruction finalBranch = new UnconditionalBranchLLVMInstruction(graphExit.getLabel());
                     node.LLVMInstructions.add(finalBranch);
                     node.llvmStrings.add(finalBranch.toString());
-                    node.armStrings.addAll(finalBranch.toARM(registerMap));
+//                    node.armStrings.addAll(finalBranch.toARM(registerMap));
+                    node.ARMInstructions.addAll(finalBranch.toARM(registerMap));
                 }
             }
 
@@ -402,11 +421,16 @@ public class CFGGenerator {
 
         graphExit.llvmStrings.add("}\n\n");
         if (reglist != null) {
-            graphExit.armStrings.add("\tpop {" + String.join(", ", reglist) + "}\n");
+//            graphExit.armStrings.add("\tpop {" + String.join(", ", reglist) + "}\n");
+            graphExit.ARMInstructions.add(new PopARMInstruction(reglist));
         }
-        graphExit.armStrings.add("\tadd sp, sp, #" + Integer.toString(frameSize) + "\n");
-        graphExit.armStrings.add("\tpop {fp, pc}\n");
-        graphExit.armStrings.add("\t.size " + functionName + ", .-" + functionName +"\n");
+//        graphExit.armStrings.add("\tadd sp, sp, #" + Integer.toString(frameSize) + "\n");
+        graphExit.ARMInstructions.add(new AddARMInstruction("sp", "sp",
+                "#" + Integer.toString(frameSize)));
+//        graphExit.armStrings.add("\tpop {fp, pc}\n");
+        graphExit.ARMInstructions.add(new PopARMInstruction(new ArrayList<>(Arrays.asList("fp", "pc"))));
+//        graphExit.armStrings.add("\t.size " + functionName + ", .-" + functionName +"\n");
+        graphExit.ARMInstructions.add(new ARMString("\t.size " + functionName + ", .-" + functionName +"\n"));
 
         return graph;
     }
@@ -489,7 +513,7 @@ public class CFGGenerator {
                 currentNode.LLVMInstructions.addAll(LLVMInstructions);
                 List<String> llvmStrings = LLVMInstructions.stream().map(LLVMInstruction::toString).collect(Collectors.toList());
                 currentNode.llvmStrings.addAll(llvmStrings);
-                currentNode.armStrings.addAll(LLVMInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
+                currentNode.ARMInstructions.addAll(LLVMInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
                         .collect(Collectors.toList()));
             }
         }
@@ -506,7 +530,8 @@ public class CFGGenerator {
                 new ConditionalBranchLLVMInstruction(result.getResult(), bodyLabel, nextLabel);
         whileNode.LLVMInstructions.add(branch);
         whileNode.llvmStrings.add(branch.toString());
-        whileNode.armStrings.addAll(branch.toARM(registerMap));
+//        whileNode.armStrings.addAll(branch.toARM(registerMap));
+        whileNode.ARMInstructions.addAll(branch.toARM(registerMap));
 
         //Body CFGNode
         CFGNode body = (CFGNode)whileNode.body;
@@ -514,8 +539,8 @@ public class CFGGenerator {
         branch = new ConditionalBranchLLVMInstruction(result.getResult(), bodyLabel, nextLabel);
         body.LLVMInstructions.add(branch);
         body.llvmStrings.add(branch.toString());
-        body.armStrings.addAll(branch.toARM(registerMap));
-
+//        body.armStrings.addAll(branch.toARM(registerMap));
+        body.ARMInstructions.addAll(branch.toARM(registerMap));
     }
 
     private Node processConditional(ConditionalStatement conditional, Node current) {
@@ -526,7 +551,7 @@ public class CFGGenerator {
         newNode.LLVMInstructions.addAll(guardInstructions);
         List<String> guardStrings = guardInstructions.stream().map(LLVMInstruction::toString).collect(Collectors.toList());
         newNode.llvmStrings.addAll(guardStrings);
-        newNode.armStrings.addAll(guardInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
+        newNode.ARMInstructions.addAll(guardInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
                 .collect(Collectors.toList()));
 
         //CFG
@@ -537,7 +562,8 @@ public class CFGGenerator {
             UnconditionalBranchLLVMInstruction branch = new UnconditionalBranchLLVMInstruction(newNode.getLabel());
             cfgNode.LLVMInstructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
-            cfgNode.armStrings.addAll(branch.toARM(registerMap));
+//            cfgNode.armStrings.addAll(branch.toARM(registerMap));
+            cfgNode.ARMInstructions.addAll(branch.toARM(registerMap));
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
@@ -608,7 +634,8 @@ public class CFGGenerator {
         ConditionalBranchLLVMInstruction branch = new ConditionalBranchLLVMInstruction(condition, thenLabel, elseLabel);
         newNode.LLVMInstructions.add(branch);
         newNode.llvmStrings.add(branch.toString());
-        newNode.armStrings.addAll(branch.toARM(registerMap));
+//        newNode.armStrings.addAll(branch.toARM(registerMap));
+        newNode.ARMInstructions.addAll(branch.toARM(registerMap));
 
         return joinNode;
     }
@@ -622,7 +649,7 @@ public class CFGGenerator {
         List<String> guardStrings = guardInstructions.stream().map(LLVMInstruction::toString).collect(Collectors.toList());
         newNode.LLVMInstructions.addAll(guardInstructions);
         newNode.llvmStrings.addAll(guardStrings);
-        newNode.armStrings.addAll(guardInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
+        newNode.ARMInstructions.addAll(guardInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
                 .collect(Collectors.toList()));
 
         if (current instanceof CFGNode) {
@@ -630,7 +657,8 @@ public class CFGGenerator {
             UnconditionalBranchLLVMInstruction branch = new UnconditionalBranchLLVMInstruction(newNode.getLabel());
             cfgNode.LLVMInstructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
-            cfgNode.armStrings.addAll(branch.toARM(registerMap));
+//            cfgNode.armStrings.addAll(branch.toARM(registerMap));
+            cfgNode.ARMInstructions.addAll(branch.toARM(registerMap));
             ((CFGNode) current).next = newNode;
             connectPredecessor(current, newNode);
         }
@@ -669,7 +697,7 @@ public class CFGGenerator {
                     .collect(Collectors.toList());
             bodyNode.LLVMInstructions.addAll(bodyGuardInstructions);
             bodyNode.llvmStrings.addAll(bodyGuardStrings);
-            bodyNode.armStrings.addAll(bodyGuardInstructions.stream().map(x -> x.toARM(registerMap))
+            bodyNode.ARMInstructions.addAll(bodyGuardInstructions.stream().map(x -> x.toARM(registerMap))
                     .flatMap(List::stream).collect(Collectors.toList()));
             bodyNode.next = newNode;
             connectPredecessor(bodyNode, newNode);

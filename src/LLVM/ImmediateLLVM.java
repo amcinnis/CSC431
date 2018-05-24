@@ -1,5 +1,7 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+
 import java.util.HashMap;
 import java.util.List;
 
@@ -16,7 +18,7 @@ public class ImmediateLLVM extends AbstractLLVMInstruction {
     }
 
     @Override
-    public List<String> toARM(HashMap<String, String> registerMap) {
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
         System.out.println("ImmediateLLVM.toARM() called!");
         return null;
     }

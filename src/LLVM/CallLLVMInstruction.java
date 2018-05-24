@@ -1,5 +1,9 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+import ARM.BranchARMInstruction;
+import ARM.MoveARMInstruction;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,23 +40,28 @@ public class CallLLVMInstruction extends ResultingLLVMInstruction {
     }
 
     @Override
-    public List<String> toARM(HashMap<String, String> registerMap) {
-        List<String> instructions = new ArrayList<>();
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
+        List<ARMInstruction> instructions = new ArrayList<>();
         int paramRegCount = 0;
         for (String arg : this.functionArgs) {
             String regLabel = arg.split(" ")[1];
             if (isInteger(regLabel)) {
                 int size = (Integer.parseInt(regLabel) / 2);
-                instructions.add("\tmovw r" + paramRegCount++ + ", #" + Integer.toString(size) + "\n");
+//                instructions.add("\tmovw r" + paramRegCount++ + ", #" + Integer.toString(size) + "\n");
+                instructions.add(new MoveARMInstruction("w", "r" + paramRegCount++,
+                        "#" + Integer.toString(size)));
             }
             else {
-                instructions.add("\tmov r" + paramRegCount++ + ", " + regLabel + "\n");
+//                instructions.add("\tmov r" + paramRegCount++ + ", " + regLabel + "\n");
+                instructions.add(new MoveARMInstruction("r" + paramRegCount++, regLabel));
             }
         }
 
-        instructions.add("\tbl " + this.functionPointer + "\n");
+//        instructions.add("\tbl " + this.functionPointer + "\n");
+        instructions.add(new BranchARMInstruction("l", this.functionPointer));
         if (this.getResult() != null) {
-            instructions.add("\tmov " + this.getResult() + ", r0\n");
+//            instructions.add("\tmov " + this.getResult() + ", r0\n ");
+            instructions.add(new MoveARMInstruction(this.getResult(), "r0"));
         }
 
         return instructions;

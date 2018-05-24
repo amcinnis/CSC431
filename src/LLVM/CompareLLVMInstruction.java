@@ -1,5 +1,9 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+import ARM.CompareARMInstruction;
+import ARM.MoveARMInstruction;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,12 +27,14 @@ public class CompareLLVMInstruction extends ResultingLLVMInstruction {
         return "\t" + getResult() + " = icmp " + conditionCode + " " + this.getType() + " " + operand1 + ", " + operand2 + "\n";
     }
 
-    public List<String> toARM(HashMap<String, String> registerMap) {
-        List<String> instructions = new ArrayList<>();
-        instructions.add("\tmov " + this.getResult() + ", #0\n");
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
+        List<ARMInstruction> instructions = new ArrayList<>();
+//        instructions.add("\tmov " + this.getResult() + ", #0\n");
+        instructions.add(new MoveARMInstruction(this.getResult(), "#0"));
         String armOperand1 = armParamLookup(registerMap, this.operand1);
         String armOperand2 = armParamLookup(registerMap, this.operand2);
-        instructions.add("\tcmp " + armOperand1 + ", " + armOperand2 + "\n");
+//        instructions.add("\tcmp " + armOperand1 + ", " + armOperand2 + "\n");
+        instructions.add(new CompareARMInstruction(armOperand1, armOperand2));
         String movCode = null;
         switch (this.conditionCode) {
             case "eq":
@@ -53,7 +59,8 @@ public class CompareLLVMInstruction extends ResultingLLVMInstruction {
                 System.out.println("Unimplemented conditionCode case in CompareLLVMInstruction toARM!");
                 break;
         }
-        instructions.add("\tmov" + movCode + " " + this.getResult() + ", #1\n");
+//        instructions.add("\tmov" + movCode + " " + this.getResult() + ", #1\n");
+        instructions.add(new MoveARMInstruction(movCode, this.getResult(), "#1"));
         return instructions;
     }
 }

@@ -1,5 +1,9 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+import ARM.AddARMInstruction;
+import ARM.MoveARMInstruction;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,18 +26,21 @@ public class GetElementPtrLLVMInstruction extends ResultingLLVMInstruction {
     }
 
     @Override
-    public List<String> toARM(HashMap<String, String> registerMap) {
-        List<String> instructions = new ArrayList<>();
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
+        List<ARMInstruction> instructions = new ArrayList<>();
 //        instructions.add("\tadd " + this.getResult() + ", " + this.pointerValue + ", #8\n");
         String armOperand1 = armParamLookup(registerMap, this.pointerValue);
         if (isInteger(this.index)) {
             int offset = Integer.parseInt(this.index);
             if (offset > 0) {
-                instructions.add("\tadd " + this.getResult() + ", " + armOperand1 + ", #" +
-                        Integer.toString(4*offset) + "\n");
+//                instructions.add("\tadd " + this.getResult() + ", " + armOperand1 + ", #" +
+//                        Integer.toString(4*offset) + "\n");
+                instructions.add(new AddARMInstruction(this.getResult(), armOperand1,
+                        "#" + Integer.toString(4*offset)));
             }
             else {
-                instructions.add("\tmov " + this.getResult() + ", " + armOperand1 + "\n");
+//                instructions.add("\tmov " + this.getResult() + ", " + armOperand1 + "\n");
+                instructions.add(new MoveARMInstruction(this.getResult(), armOperand1));
             }
         }
         return instructions;

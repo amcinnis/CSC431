@@ -1,5 +1,7 @@
 package LLVM;
 
+import ARM.ARMInstruction;
+
 import java.util.HashMap;
 import java.util.List;
 
@@ -16,7 +18,7 @@ public class ANDLLVMInstruction extends BinaryLLVMInstruction {
     }
 
     @Override
-    public List<String> toARM(HashMap<String, String> registerMap) {
+    public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
         return super.toARM("and", registerMap);
     }
 }
