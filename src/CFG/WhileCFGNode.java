@@ -1,10 +1,6 @@
 package CFG;
 
-import LLVM.Instruction;
 import ast.Expression;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class WhileCFGNode extends AbstractCFGNode {
 

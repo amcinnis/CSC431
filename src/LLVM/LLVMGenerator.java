@@ -123,7 +123,7 @@ public class LLVMGenerator {
             if (this.visitedNodes.contains(label)) {
                 return false;
             }
-            else if (abstractCFGNode.instructions.size() == 0) {
+            else if (abstractCFGNode.LLVMInstructions.size() == 0) {
                 return false;
             }
             else {

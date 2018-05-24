@@ -1,6 +1,6 @@
 package CFG;
 
-import LLVM.Instruction;
+import LLVM.LLVMInstruction;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -11,7 +11,7 @@ public abstract class AbstractCFGNode implements Node {
     private String label;
     public Node pred0;
     public Node pred1;
-    public List<Instruction> instructions;
+    public List<LLVMInstruction> LLVMInstructions;
     public List<String> llvmStrings;
     public List<String> armStrings;
     public HashSet<String> genSet;
@@ -22,7 +22,7 @@ public abstract class AbstractCFGNode implements Node {
         this.label = label;
         this.pred1 = null;
         this.pred0 = null;
-        this.instructions = new ArrayList<>();
+        this.LLVMInstructions = new ArrayList<>();
         this.llvmStrings = new ArrayList<>();
         this.armStrings = new ArrayList<>();
         this.genSet = new HashSet<>();
