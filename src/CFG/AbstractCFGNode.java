@@ -1,6 +1,6 @@
 package CFG;
 
-import ARM.ARMInstruction;
+import ARM.*;
 import LLVM.LLVMInstruction;
 
 import java.util.ArrayList;
@@ -31,6 +31,84 @@ public abstract class AbstractCFGNode implements Node {
         this.genSet = new HashSet<>();
         this.killSet = new HashSet<>();
         this.liveOut = new HashSet<>();
+    }
+
+    public void generateGenKill() {
+        HashSet<String> ignore = new HashSet<>();
+        ignore.add("fp");
+        ignore.add("sp");
+        ignore.add("#");
+        ignore.add("lr");
+        ignore.add("pc");
+
+        for (ARMInstruction instruction : ARMInstructions) {
+            if (instruction instanceof BranchARMInstruction) {
+                continue;
+            }
+            else if (instruction instanceof PushARMInstruction) {
+                continue;
+            }
+            else if (instruction instanceof PopARMInstruction) {
+                continue;
+            }
+            else if (instruction instanceof ARMString) {
+                continue;
+            }
+            else if (instruction instanceof BinaryARMInstruction) {
+                BinaryARMInstruction binary = (BinaryARMInstruction)instruction;
+                String source1 = binary.getOperand1();
+                String source2 = binary.getOperand2();
+                String target = binary.getTarget();
+                checkSource(ignore, source1);
+                checkSource(ignore, source2);
+                checkTarget(ignore, target);
+            }
+            else if (instruction instanceof CompareARMInstruction) {
+                CompareARMInstruction compare = (CompareARMInstruction)instruction;
+                String source1 = compare.getOperand1();
+                String source2 = compare.getOperand2();
+                checkSource(ignore, source1);
+                checkSource(ignore, source2);
+            }
+            else if (instruction instanceof LoadARMInstruction) {
+                LoadARMInstruction load = (LoadARMInstruction)instruction;
+                String source = load.getOperand2();
+                String target = load.getOperand1();
+                checkSource(ignore, source);
+                checkTarget(ignore, target);
+            }
+            else if (instruction instanceof StoreARMInstruction) {
+                StoreARMInstruction store = (StoreARMInstruction)instruction;
+                String source1 = store.getOperand1();
+                String source2 = store.getOperand2();
+                checkSource(ignore, source1);
+                checkSource(ignore, source2);
+            }
+            else if (instruction instanceof MoveARMInstruction) {
+                MoveARMInstruction move = (MoveARMInstruction)instruction;
+                String source = move.getOperand2();
+                String target = move.getOperand1();
+                checkSource(ignore, source);
+                checkTarget(ignore, target);
+            }
+            else {
+                System.out.print("Unimplemented instruction in generateGenKill!");
+            }
+        }
+    }
+
+    private void checkSource(HashSet<String> ignore, String source) {
+        if (ignore.stream().parallel().noneMatch(source::contains)) {
+            if (!(killSet.contains(source))) {
+                genSet.add(source);
+            }
+        }
+    }
+
+    private void checkTarget(HashSet<String> ignore, String target) {
+        if (ignore.stream().parallel().noneMatch(target::contains)) {
+            killSet.add(target);
+        }
     }
 
     public String getLabel() {

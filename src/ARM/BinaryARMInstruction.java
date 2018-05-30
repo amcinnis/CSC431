@@ -15,4 +15,16 @@ public class BinaryARMInstruction extends AbstractARMInstruction {
     public String getToString(String op) {
         return "\t" + op + " " + target + ", " + this.operand1 + ", " + this.operand2 + "\n";
     }
+
+    public String getTarget() {
+        return target;
+    }
+
+    public String getOperand1() {
+        return operand1;
+    }
+
+    public String getOperand2() {
+        return operand2;
+    }
 }

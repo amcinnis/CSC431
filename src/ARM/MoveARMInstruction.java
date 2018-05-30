@@ -18,6 +18,14 @@ public class MoveARMInstruction extends AbstractARMInstruction {
         this.operand2 = operand2;
     }
 
+    public String getOperand1() {
+        return operand1;
+    }
+
+    public String getOperand2() {
+        return operand2;
+    }
+
     @Override
     public String toString() {
         if (this.code == null) {

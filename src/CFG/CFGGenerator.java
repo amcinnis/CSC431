@@ -229,17 +229,11 @@ public class CFGGenerator {
         declaration.append(functionName + "(");
 
         //ARM Declaration
-//        graphEntry.armStrings.add("\t.align 2\n");
         graphEntry.ARMInstructions.add(new ARMString("\t.align 2\n"));
-//        graphEntry.armStrings.add("\t.global " + functionName + "\n");
         graphEntry.ARMInstructions.add(new ARMString("\t.global " + functionName + "\n"));
-//        graphEntry.armStrings.add(functionName + ":\n");
         graphEntry.ARMInstructions.add(new ARMString(functionName + ":\n"));
-//        graphEntry.armStrings.add(graphEntry.getLabel() + ":\n");
         graphEntry.ARMInstructions.add(new ARMString(graphEntry.getLabel() + ":\n"));
-//        graphEntry.armStrings.add("\tpush {fp, lr}\n");
         graphEntry.ARMInstructions.add(new PushARMInstruction(new ArrayList<>(Arrays.asList("fp", "lr"))));
-//        graphEntry.armStrings.add("\tadd fp, sp, #4\n");
         graphEntry.ARMInstructions.add(new AddARMInstruction("fp", "sp", "#4"));
 
         //Generate LLVM/ARM for parameters
@@ -263,6 +257,7 @@ public class CFGGenerator {
                 //Map param name to respective register. For example:
                 //func(i32 one, i32 two) -> key: one, value: r0; key: two, value: r1
 //                this.registerMap.put(paramStore.getValue(), "r" + Integer.toString(armParamReg)); TODO: account for target register
+                stackARM.add(new MoveARMInstruction("%" + name, "r"+Integer.toString(armParamReg)));
                 this.registerMap.put(paramStore.getPointer(), "[fp, #-" + Integer.toString(frameSize + paramOffset)
                         + "]");
                 stackARM.addAll(paramStore.toARM(registerMap));
@@ -292,7 +287,6 @@ public class CFGGenerator {
             for (int i = 4; i < armParamReg; i++) {
                 reglist.add("r" + Integer.toString(i));
             }
-//            graphEntry.armStrings.add("\t push {" + String.join(", ", reglist) + "}\n");
             graphEntry.ARMInstructions.add(new PushARMInstruction(reglist));
         }
 
@@ -307,7 +301,6 @@ public class CFGGenerator {
             ReturnVoidLLVMInstruction returnVoidInstruction = new ReturnVoidLLVMInstruction();
             graphExit.LLVMInstructions.add(returnVoidInstruction);
             graphExit.llvmStrings.add(returnVoidInstruction.toString());
-//            graphExit.armStrings.addAll(returnVoidInstruction.toARM(registerMap));
             graphExit.ARMInstructions.addAll(returnVoidInstruction.toARM(registerMap));
         }
         else {
@@ -322,7 +315,6 @@ public class CFGGenerator {
             AllocateLLVMInstruction returnAllocateInstruction = new AllocateLLVMInstruction("%_retval_", retTypeString);
             graphEntry.LLVMInstructions.add(returnAllocateInstruction);
             graphEntry.llvmStrings.add(returnAllocateInstruction.toString());
-//            graphEntry.armStrings.addAll(returnAllocateInstruction.toARM(registerMap));
             graphEntry.ARMInstructions.addAll(returnAllocateInstruction.toARM(registerMap));
         }
 
@@ -357,15 +349,12 @@ public class CFGGenerator {
             }
             graphEntry.LLVMInstructions.add(allocateInstruction);
             graphEntry.llvmStrings.add(allocateInstruction.toString());
-//            graphEntry.armStrings.addAll(allocateInstruction.toARM(registerMap));
             graphEntry.ARMInstructions.addAll(allocateInstruction.toARM(registerMap));
         }
 
         //ARM stack setup for frame size (params and locals)
-//        graphEntry.armStrings.add("\tsub sp, sp, #" + Integer.toString(frameSize) + "\n");
         graphEntry.ARMInstructions.add(new SubtractARMInstruction("sp", "sp",
                 "#" + Integer.toString(frameSize)));
-//        graphEntry.armStrings.addAll(stackARM);
         graphEntry.ARMInstructions.addAll(stackARM);
 
         //Iterate through all statements
@@ -380,7 +369,6 @@ public class CFGGenerator {
 //            registerMap.put(load.getResult(), load.getPointer());
             graphExit.LLVMInstructions.add(load);
             graphExit.llvmStrings.add(load.toString());
-//            graphExit.armStrings.addAll(load.toARM(registerMap));
             graphExit.ARMInstructions.addAll(load.toARM(registerMap));
             //Strip tailing '*'
             String type = load.getType();
@@ -390,7 +378,6 @@ public class CFGGenerator {
             ReturnLLVMInstruction ret = new ReturnLLVMInstruction(type, load.getResult());
             graphExit.LLVMInstructions.add(ret);
             graphExit.llvmStrings.add(ret.toString());
-//            graphExit.armStrings.addAll(ret.toARM(registerMap));
             graphExit.ARMInstructions.addAll(ret.toARM(registerMap));
         }
 
@@ -404,7 +391,6 @@ public class CFGGenerator {
                     UnconditionalBranchLLVMInstruction finalBranch = new UnconditionalBranchLLVMInstruction(graphExit.getLabel());
                     node.LLVMInstructions.add(finalBranch);
                     node.llvmStrings.add(finalBranch.toString());
-//                    node.armStrings.addAll(finalBranch.toARM(registerMap));
                     node.ARMInstructions.addAll(finalBranch.toARM(registerMap));
                 }
             }
@@ -421,16 +407,16 @@ public class CFGGenerator {
 
         graphExit.llvmStrings.add("}\n\n");
         if (reglist != null) {
-//            graphExit.armStrings.add("\tpop {" + String.join(", ", reglist) + "}\n");
             graphExit.ARMInstructions.add(new PopARMInstruction(reglist));
         }
-//        graphExit.armStrings.add("\tadd sp, sp, #" + Integer.toString(frameSize) + "\n");
         graphExit.ARMInstructions.add(new AddARMInstruction("sp", "sp",
                 "#" + Integer.toString(frameSize)));
-//        graphExit.armStrings.add("\tpop {fp, pc}\n");
         graphExit.ARMInstructions.add(new PopARMInstruction(new ArrayList<>(Arrays.asList("fp", "pc"))));
-//        graphExit.armStrings.add("\t.size " + functionName + ", .-" + functionName +"\n");
         graphExit.ARMInstructions.add(new ARMString("\t.size " + functionName + ", .-" + functionName +"\n"));
+
+        //Generate gen/kill sets
+        ((AbstractCFGNode)current).generateGenKill();
+        graphExit.generateGenKill();
 
         return graph;
     }
@@ -482,6 +468,8 @@ public class CFGGenerator {
                 else {
                     System.out.println("processStatement conditionalNode's then/else both not null!");
                 }
+                //Generate gen/kill sets
+                conditionalNode.generateGenKill();
             }
             else if (current instanceof WhileCFGNode) {
                 WhileCFGNode whileNode = (WhileCFGNode) current;
@@ -500,6 +488,8 @@ public class CFGGenerator {
                 else {
                     System.out.println("processStatement whileNode's body/next both not null!");
                 }
+                //Generate gen/kill sets
+                whileNode.generateGenKill();
             }
 
             if (current instanceof CFGNode) {
@@ -513,8 +503,9 @@ public class CFGGenerator {
                 currentNode.LLVMInstructions.addAll(LLVMInstructions);
                 List<String> llvmStrings = LLVMInstructions.stream().map(LLVMInstruction::toString).collect(Collectors.toList());
                 currentNode.llvmStrings.addAll(llvmStrings);
-                currentNode.ARMInstructions.addAll(LLVMInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
-                        .collect(Collectors.toList()));
+                List<ARMInstruction> armInstructions = LLVMInstructions.stream().map(x -> x.toARM(registerMap))
+                        .flatMap(List::stream).collect(Collectors.toList());
+                currentNode.ARMInstructions.addAll(armInstructions);
             }
         }
 
@@ -530,7 +521,6 @@ public class CFGGenerator {
                 new ConditionalBranchLLVMInstruction(result.getResult(), bodyLabel, nextLabel);
         whileNode.LLVMInstructions.add(branch);
         whileNode.llvmStrings.add(branch.toString());
-//        whileNode.armStrings.addAll(branch.toARM(registerMap));
         whileNode.ARMInstructions.addAll(branch.toARM(registerMap));
 
         //Body CFGNode
@@ -539,7 +529,6 @@ public class CFGGenerator {
         branch = new ConditionalBranchLLVMInstruction(result.getResult(), bodyLabel, nextLabel);
         body.LLVMInstructions.add(branch);
         body.llvmStrings.add(branch.toString());
-//        body.armStrings.addAll(branch.toARM(registerMap));
         body.ARMInstructions.addAll(branch.toARM(registerMap));
     }
 
@@ -551,8 +540,9 @@ public class CFGGenerator {
         newNode.LLVMInstructions.addAll(guardInstructions);
         List<String> guardStrings = guardInstructions.stream().map(LLVMInstruction::toString).collect(Collectors.toList());
         newNode.llvmStrings.addAll(guardStrings);
-        newNode.ARMInstructions.addAll(guardInstructions.stream().map(x -> x.toARM(registerMap)).flatMap(List::stream)
-                .collect(Collectors.toList()));
+        List <ARMInstruction> armInstructions = guardInstructions.stream().map(x -> x.toARM(registerMap))
+                .flatMap(List::stream).collect(Collectors.toList());
+        newNode.ARMInstructions.addAll(armInstructions);
 
         //CFG
         if (current instanceof CFGNode) {
@@ -562,8 +552,10 @@ public class CFGGenerator {
             UnconditionalBranchLLVMInstruction branch = new UnconditionalBranchLLVMInstruction(newNode.getLabel());
             cfgNode.LLVMInstructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
-//            cfgNode.armStrings.addAll(branch.toARM(registerMap));
             cfgNode.ARMInstructions.addAll(branch.toARM(registerMap));
+
+            //Generate gen/kill sets
+            cfgNode.generateGenKill();
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
@@ -578,6 +570,8 @@ public class CFGGenerator {
             else {
                 System.out.println("processConditional conditionalNode's then/else both not null!");
             }
+            //Generate gen/kill sets
+            conditionalNode.generateGenKill();
         }
         else if (current instanceof WhileCFGNode) {
             WhileCFGNode whileNode = (WhileCFGNode) current;
@@ -593,6 +587,9 @@ public class CFGGenerator {
             else {
                 System.out.println("processConditional whileNode's body/next both not null!");
             }
+
+            //Generate gen/kill sets
+            whileNode.generateGenKill();
         }
         else {
             System.out.println("processConditional received unexpected Node as current");
@@ -612,6 +609,9 @@ public class CFGGenerator {
         if (thenEnd instanceof CFGNode) {
             ((CFGNode) thenEnd).next = joinNode;
             connectPredecessor(thenEnd, joinNode);
+
+            //Generate gen/kill sets
+            ((CFGNode) thenEnd).generateGenKill();
         }
         else {
             System.out.println("thenNode in conditional not instanceof CFGNode");
@@ -624,6 +624,10 @@ public class CFGGenerator {
             newNode.elseNode = joinNode;
             connectPredecessor(newNode, joinNode);
         }
+        if (elseEnd != null) {
+            // Generate gen/kill
+            ((AbstractCFGNode)elseEnd).generateGenKill();
+        }
 
         //Generate guard branch LLVM instruction
         CompareLLVMInstruction compareInstruction = (CompareLLVMInstruction)guardInstructions.get(guardInstructions.size()-1);
@@ -634,7 +638,6 @@ public class CFGGenerator {
         ConditionalBranchLLVMInstruction branch = new ConditionalBranchLLVMInstruction(condition, thenLabel, elseLabel);
         newNode.LLVMInstructions.add(branch);
         newNode.llvmStrings.add(branch.toString());
-//        newNode.armStrings.addAll(branch.toARM(registerMap));
         newNode.ARMInstructions.addAll(branch.toARM(registerMap));
 
         return joinNode;
@@ -657,10 +660,12 @@ public class CFGGenerator {
             UnconditionalBranchLLVMInstruction branch = new UnconditionalBranchLLVMInstruction(newNode.getLabel());
             cfgNode.LLVMInstructions.add(branch);
             cfgNode.llvmStrings.add(branch.toString());
-//            cfgNode.armStrings.addAll(branch.toARM(registerMap));
             cfgNode.ARMInstructions.addAll(branch.toARM(registerMap));
             ((CFGNode) current).next = newNode;
             connectPredecessor(current, newNode);
+
+            //Generate gen/kill sets
+            cfgNode.generateGenKill();
         }
         else if (current instanceof ConditionalCFGNode) {
             ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
@@ -676,12 +681,18 @@ public class CFGGenerator {
             else {
                 System.out.println("processWhile conditional's then/else branches both full!");
             }
+
+            //Generate gen/kill sets
+            conditionalNode.generateGenKill();
         }
         else if (current instanceof WhileCFGNode) {
             WhileCFGNode whileNode = (WhileCFGNode)current;
             //TODO: Create Unconditional Branch?
             whileNode.body = newNode;
             connectPredecessor(whileNode, newNode);
+
+            //Generate gen/kill sets
+            whileNode.generateGenKill();
         }
         else {
             System.out.println("processWhile received unexpected Node as current");
@@ -701,6 +712,9 @@ public class CFGGenerator {
                     .flatMap(List::stream).collect(Collectors.toList()));
             bodyNode.next = newNode;
             connectPredecessor(bodyNode, newNode);
+
+            //Generate gen/kill sets
+            bodyNode.generateGenKill();
         }
         else {
             System.out.println("Body of while not instanceof CFGNode");

@@ -10,6 +10,14 @@ public class CompareARMInstruction extends AbstractARMInstruction {
         this.operand2 = operand2;
     }
 
+    public String getOperand1() {
+        return operand1;
+    }
+
+    public String getOperand2() {
+        return operand2;
+    }
+
     @Override
     public String toString() {
         return "\tcmp " + this.operand1 + ", " + this.operand2 + "\n";
