@@ -9,10 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CFGGenerator {
@@ -31,6 +28,7 @@ public class CFGGenerator {
     private FileWriter armWriter;
     private boolean stackOption;
     private boolean regOff;
+    private List<Node> allNodes;
     private HashMap<String, String> registerMap;
 
     public CFGGenerator(String inputFile, Program program, boolean stackOption, boolean regOff) {
@@ -48,6 +46,7 @@ public class CFGGenerator {
         this.armWriter = null;
         this.stackOption = stackOption;
         this.regOff = regOff;
+        this.allNodes = new ArrayList<>();
         this.registerMap = new HashMap<>();
     }
 
@@ -210,15 +209,17 @@ public class CFGGenerator {
 
         //Generate Entry and Exit nodes
         graphExit = new CFGNode(newLabel());
+        allNodes.add(graphExit);
         graph.exit = graphExit;
-        graph.entry = new CFGNode(newLabel());
+        graphEntry = new CFGNode(newLabel());
+        allNodes.add(graphEntry);
+        graph.entry = graphEntry;
 
         //Get function body
         BlockStatement body = (BlockStatement) function.getBody();
         List <Statement> statements = body.getStatements();
 
-        //Create references to entry node
-        graphEntry = graph.entry;
+        //Set current to entry node
         Node current = graph.entry;
 
         //Generate function declaration in LLVM
@@ -418,7 +419,94 @@ public class CFGGenerator {
         ((AbstractCFGNode)current).generateGenKill();
         graphExit.generateGenKill();
 
+        // Generate LiveOut sets
+        generateLiveOut();
+
         return graph;
+    }
+
+    private void generateLiveOut() {
+
+        boolean liveOutHasChanged;
+
+        do {
+            liveOutHasChanged = false;
+            for (Node node : allNodes) {
+                //Generate LiveOut set
+
+                //First get successor. Find out which type of Node it is
+                if (node instanceof CFGNode) {
+                    CFGNode current = (CFGNode) node;
+                    if (current.next != null) {
+                        AbstractCFGNode prev = (AbstractCFGNode) current.next;
+                        HashSet<String> tmp = new HashSet<>(prev.liveOut);
+                        tmp.removeAll(prev.killSet);
+                        tmp.addAll(prev.genSet);
+                        if (!(current.liveOut.containsAll(tmp))) {
+                            liveOutHasChanged = true;
+                            current.liveOut = tmp;
+                        }
+                    }
+                }
+                else if (node instanceof ConditionalCFGNode) {
+                    ConditionalCFGNode current = (ConditionalCFGNode)node;
+                    AbstractCFGNode thenNode = (AbstractCFGNode)current.thenNode;
+                    AbstractCFGNode elseNode = (AbstractCFGNode)current.elseNode;
+
+                    // Then Node
+                    HashSet<String> thenLO = new HashSet<>(thenNode.liveOut);
+                    HashSet<String> thenGen = new HashSet<>(thenNode.genSet);
+                    HashSet<String> thenKill = new HashSet<>(thenNode.killSet);
+                    thenLO.removeAll(thenKill);
+                    thenLO.addAll(thenGen);
+
+                    // Else Node
+                    if (elseNode != null) {
+                        HashSet<String> elseLO = new HashSet<>(elseNode.liveOut);
+                        HashSet<String> elseGen = new HashSet<>(elseNode.genSet);
+                        HashSet<String> elseKill = new HashSet<>(elseNode.killSet);
+                        elseLO.removeAll(elseKill);
+                        elseLO.addAll(elseGen);
+                        thenLO.addAll(elseLO);
+                    }
+
+                    if (!(current.liveOut.containsAll(thenLO))) {
+                        liveOutHasChanged = true;
+                        current.liveOut = thenLO;
+                    }
+                }
+                else if (node instanceof WhileCFGNode) {
+                    WhileCFGNode current = (WhileCFGNode)node;
+                    AbstractCFGNode body = (AbstractCFGNode)current.body;
+                    AbstractCFGNode next = (AbstractCFGNode)current.next;
+
+                    // Body Node
+                    HashSet<String> bodyLO = new HashSet<>(body.liveOut);
+                    HashSet<String> bodyGen = new HashSet<>(body.genSet);
+                    HashSet<String> bodyKill = new HashSet<>(body.killSet);
+                    bodyLO.removeAll(bodyKill);
+                    bodyLO.addAll(bodyGen);
+
+                    // Next Node
+                    HashSet<String> nextLO = new HashSet<>(next.liveOut);
+                    HashSet<String> nextGen = new HashSet<>(next.genSet);
+                    HashSet<String> nextKill = new HashSet<>(next.killSet);
+                    nextLO.removeAll(nextKill);
+                    nextLO.addAll(nextGen);
+
+                    //Union
+                    bodyLO.addAll(nextLO);
+
+                    if (!(current.liveOut.containsAll(bodyLO))) {
+                        liveOutHasChanged = true;
+                        current.liveOut = bodyLO;
+                    }
+                }
+                else {
+                    System.out.println("Error! Unimplemented instance of node in generateLiveOut!");
+                }
+            }
+        } while (liveOutHasChanged);
     }
 
     private void connectPredecessor(Node predecessor, AbstractCFGNode node) {
@@ -449,18 +537,21 @@ public class CFGGenerator {
             //check if CFGNode has been created. If not, create and link.
             if (current == null) {
                 CFGNode newNode = new CFGNode(newLabel());
+                allNodes.add(newNode);
                 current = newNode;
             }
             else if (current instanceof ConditionalCFGNode) {
                 ConditionalCFGNode conditionalNode = (ConditionalCFGNode) current;
                 if (conditionalNode.thenNode == null) {
                     CFGNode newNode = new CFGNode(newLabel());
+                    allNodes.add(newNode);
                     conditionalNode.thenNode = newNode;
                     connectPredecessor(conditionalNode, newNode);
                     current = newNode;
                 }
                 else if (conditionalNode.elseNode == null) {
                     CFGNode newNode = new CFGNode(newLabel());
+                    allNodes.add(newNode);
                     conditionalNode.elseNode = newNode;
                     connectPredecessor(conditionalNode, newNode);
                     current = newNode;
@@ -474,6 +565,7 @@ public class CFGGenerator {
             else if (current instanceof WhileCFGNode) {
                 WhileCFGNode whileNode = (WhileCFGNode) current;
                 CFGNode newNode = new CFGNode(newLabel());
+                allNodes.add(newNode);
                 if (whileNode.body == null) {
                     whileNode.body = newNode;
                     connectPredecessor(whileNode, newNode);
@@ -534,6 +626,7 @@ public class CFGGenerator {
 
     private Node processConditional(ConditionalStatement conditional, Node current) {
         ConditionalCFGNode newNode = new ConditionalCFGNode(newLabel(), conditional.getGuard());
+        allNodes.add(newNode);
 
         //Guard LLVM
         List<LLVMInstruction> guardInstructions = generateLLVMFromExpression(conditional.getGuard());
@@ -606,6 +699,7 @@ public class CFGGenerator {
 
         //Join two blocks together
         CFGNode joinNode = new CFGNode(newJoinLabel());
+        allNodes.add(joinNode);
         if (thenEnd instanceof CFGNode) {
             ((CFGNode) thenEnd).next = joinNode;
             connectPredecessor(thenEnd, joinNode);
@@ -646,6 +740,7 @@ public class CFGGenerator {
     private Node processWhile(WhileStatement whileStatement, Node current) {
         Expression guard = whileStatement.getGuard();
         WhileCFGNode newNode = new WhileCFGNode(newLabel(), guard);
+        allNodes.add(newNode);
 
         //Guard LLVM
         List<LLVMInstruction> guardInstructions = generateLLVMFromExpression(guard);
