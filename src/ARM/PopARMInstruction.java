@@ -11,6 +11,16 @@ public class PopARMInstruction extends AbstractARMInstruction {
     }
 
     @Override
+    public String getTarget() {
+        return null;
+    }
+
+    @Override
+    public List<String> getSources() {
+        return null;
+    }
+
+    @Override
     public String toString() {
         return "\tpop {" + String.join(", ", this.regList) + "}\n";
     }

@@ -34,42 +34,40 @@ public class InterferenceGraph {
                         String target = binary.getTarget();
                         drawEdges(target, liveOut);
                         //Add each source to live set
-                        String source1 = binary.getOperand1();
-                        String source2 = binary.getOperand2();
-                        liveOut.add(source1);
-                        liveOut.add(source2);
+                        List<String> sources = binary.getSources();
+                        liveOut.addAll(sources);
+//                        String source1 = binary.getOperand1();
+//                        String source2 = binary.getOperand2();
+//                        liveOut.add(source1);
+//                        liveOut.add(source2);
                     }
                     else if (instruction instanceof CompareARMInstruction) {
                         CompareARMInstruction compare = (CompareARMInstruction)instruction;
                         //No target in compare, only add sources to live set.
-                        String source1 = compare.getOperand1();
-                        String source2 = compare.getOperand2();
-                        liveOut.add(source1);
-                        liveOut.add(source2);
+                        List<String> sources = compare.getSources();
+                        liveOut.addAll(sources);
                     }
                     else if (instruction instanceof LoadARMInstruction) {
                         LoadARMInstruction load = (LoadARMInstruction)instruction;
-                        String target = load.getOperand1();
+                        String target = load.getTarget();
                         drawEdges(target, liveOut);
-                        //Add each source to live set
-                        String source = load.getOperand2();
-                        liveOut.add(source);
+                        //Add source to live set
+                        List<String> source = load.getSources();
+                        liveOut.addAll(source);
                     }
                     else if (instruction instanceof StoreARMInstruction) {
                         StoreARMInstruction store = (StoreARMInstruction)instruction;
                         //No targets in store, only add sources to live set.
-                        String source1 = store.getOperand1();
-                        String source2 = store.getOperand2();
-                        liveOut.add(source1);
-                        liveOut.add(source2);
+                        List<String> sources = store.getSources();
+                        liveOut.addAll(sources);
                     }
                     else if (instruction instanceof MoveARMInstruction) {
                         MoveARMInstruction move = (MoveARMInstruction)instruction;
                         String target = move.getOperand1();
                         drawEdges(target, liveOut);
-                        //Add each source to live set
-                        String source = move.getOperand2();
-                        liveOut.add(source);
+                        //Add source to live set
+                        List<String> source = move.getSources();
+                        liveOut.addAll(source);
                     }
                     else {
                         System.out.println("Unimplemented instruction in buildInterferenceGraph!");

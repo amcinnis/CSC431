@@ -11,6 +11,16 @@ public class PushARMInstruction extends AbstractARMInstruction {
     }
 
     @Override
+    public String getTarget() {
+        return null;
+    }
+
+    @Override
+    public List<String> getSources() {
+        return null;
+    }
+
+    @Override
     public String toString() {
         return "\tpush {" + String.join(", ", this.regList) + "}\n";
     }

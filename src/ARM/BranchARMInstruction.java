@@ -1,5 +1,7 @@
 package ARM;
 
+import java.util.List;
+
 public class BranchARMInstruction extends AbstractARMInstruction {
 
     private String code;
@@ -13,6 +15,16 @@ public class BranchARMInstruction extends AbstractARMInstruction {
     public BranchARMInstruction(String code, String label) {
         this.label = label;
         this.code = code;
+    }
+
+    @Override
+    public String getTarget() {
+        return null;
+    }
+
+    @Override
+    public List<String> getSources() {
+        return null;
     }
 
     @Override

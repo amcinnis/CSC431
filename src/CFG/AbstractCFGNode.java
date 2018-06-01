@@ -56,39 +56,47 @@ public abstract class AbstractCFGNode implements Node {
             }
             else if (instruction instanceof BinaryARMInstruction) {
                 BinaryARMInstruction binary = (BinaryARMInstruction)instruction;
-                String source1 = binary.getOperand1();
-                String source2 = binary.getOperand2();
+                List<String> sources = binary.getSources();
+//                String source1 = binary.getOperand1();
+//                String source2 = binary.getOperand2();
                 String target = binary.getTarget();
-                checkSource(ignore, source1);
-                checkSource(ignore, source2);
+                for (String source : sources) {
+                    checkSource(ignore, source);
+                }
+//                checkSource(ignore, source1);
+//                checkSource(ignore, source2);
                 checkTarget(ignore, target);
             }
             else if (instruction instanceof CompareARMInstruction) {
                 CompareARMInstruction compare = (CompareARMInstruction)instruction;
-                String source1 = compare.getOperand1();
-                String source2 = compare.getOperand2();
-                checkSource(ignore, source1);
-                checkSource(ignore, source2);
+                List<String> sources = compare.getSources();
+                for (String source : sources) {
+                    checkSource(ignore, source);
+                }
             }
             else if (instruction instanceof LoadARMInstruction) {
                 LoadARMInstruction load = (LoadARMInstruction)instruction;
-                String source = load.getOperand2();
-                String target = load.getOperand1();
-                checkSource(ignore, source);
+                List<String> sources = load.getSources();
+                String target = load.getTarget();
+                for (String source : sources) {
+                    checkSource(ignore, source);
+                }
                 checkTarget(ignore, target);
             }
             else if (instruction instanceof StoreARMInstruction) {
                 StoreARMInstruction store = (StoreARMInstruction)instruction;
-                String source1 = store.getOperand1();
-                String source2 = store.getOperand2();
-                checkSource(ignore, source1);
-                checkSource(ignore, source2);
+                List<String> sources = store.getSources();
+                for (String source : sources) {
+                    checkSource(ignore, source);
+                }
             }
             else if (instruction instanceof MoveARMInstruction) {
                 MoveARMInstruction move = (MoveARMInstruction)instruction;
-                String source = move.getOperand2();
+                List<String> sources = move.getSources();
                 String target = move.getOperand1();
-                checkSource(ignore, source);
+                for (String source : sources) {
+                    checkSource(ignore, source);
+                }
                 checkTarget(ignore, target);
             }
             else {

@@ -1,5 +1,8 @@
 package ARM;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class BinaryARMInstruction extends AbstractARMInstruction {
 
     private String target;
@@ -18,6 +21,15 @@ public class BinaryARMInstruction extends AbstractARMInstruction {
 
     public String getTarget() {
         return target;
+    }
+
+    public List<String> getSources() {
+        List<String> sources = new ArrayList<>();
+
+        sources.add(operand1);
+        sources.add(operand2);
+
+        return sources;
     }
 
     public String getOperand1() {
