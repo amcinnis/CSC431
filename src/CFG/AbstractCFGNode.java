@@ -19,7 +19,6 @@ public abstract class AbstractCFGNode implements Node {
     public HashSet<String> genSet;
     public HashSet<String> killSet;
     public HashSet<String> liveOut;
-    public boolean visited;
 
     public AbstractCFGNode(String label) {
         this.label = label;

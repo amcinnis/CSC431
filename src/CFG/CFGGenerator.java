@@ -1,6 +1,7 @@
 package CFG;
 
 import ARM.*;
+import InterferenceGraph.InterferenceGraph;
 import LLVM.*;
 import ast.*;
 
@@ -421,6 +422,10 @@ public class CFGGenerator {
 
         // Generate LiveOut sets
         generateLiveOut();
+
+        //Build Interference Graph
+        InterferenceGraph interferenceGraph = new InterferenceGraph();
+        interferenceGraph.buildInterferenceGraph(allNodes);
 
         return graph;
     }
