@@ -1,0 +1,20 @@
+struct B {
+    int j;
+};
+
+struct A {
+    int i;
+    struct A next;
+    struct B end;
+};
+
+fun main() int
+{
+    struct A a;
+
+    {
+        a.next.end.j = 3;
+    }
+
+    return 0;
+}

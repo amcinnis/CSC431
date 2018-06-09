@@ -1,0 +1,19 @@
+fun f() void
+{
+    int a, b, c;
+
+    {
+        a = 2 * 3;
+        b = a + 1;
+
+        if (a < c)
+        {
+            print a;
+        }
+        else
+        {
+            print 2;
+        }
+        c = 2;
+    }
+}

@@ -1,0 +1,15 @@
+fun f(int i, bool b) int {
+    return i + 1;
+}
+
+fun main() int {
+
+    bool c;
+    int j;
+
+    {
+        f(c, j);
+    }
+
+    return 0;
+}

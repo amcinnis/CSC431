@@ -1,0 +1,12 @@
+fun foo(int n) int
+{
+   int a, b, a;
+   if (n <= 0)
+   {
+      return 1;
+   }
+   else
+   {
+      return n * foo(n - 1);
+   }
+}

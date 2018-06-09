@@ -1,0 +1,13 @@
+#!/bin/bash
+RED='\033[0;31m'
+NC='\033[0m'
+CYAN='\033[1;36m'
+
+basetime=$(date +%s%N)
+
+for i in `seq 0 19`; do
+   ./llvm_run $i -d
+done
+
+echo -e "${CYAN}COMPILED LLVM AND RAN BENCHMARKS IN $(echo "scale=3;($(date +%s%N) - ${basetime})/(1*10^09)" | bc) SECONDS${NC}"
+

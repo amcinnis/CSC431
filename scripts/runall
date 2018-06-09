@@ -1,0 +1,24 @@
+#!/bin/bash
+NC='\033[0m'
+CYAN='\033[1;36m'
+
+basetime=$(date +%s%N)
+
+REMOTE_PATH="~/Documents/431/ms4"
+STEPHEN="scschmid@unix2.csc.calpoly.edu"
+NADIR="nfayazov@unix2.csc.calpoly.edu"
+
+if [ $1 == "-n" ];  then
+    SSHPATH=$NADIR
+else
+    SSHPATH=$STEPHEN
+fi
+
+for i in `seq 0 19`; do
+    ./run $1 $i -nt
+done
+echo -e "${CYAN} Transfering to Unix Server...$NC"
+scp ll/*.ll ${SSHPATH}:${REMOTE_PATH}/llvm
+scp s/*.s ${SSHPATH}:${REMOTE_PATH}/s
+
+echo -e "${CYAN}...Done!\n\nCOMPILED AND TRANSFERRED 20 BENCHMARKS IN $(echo "scale=3;($(date +%s%N) - ${basetime})/(1*10^09)" | bc) SECONDS${NC}"

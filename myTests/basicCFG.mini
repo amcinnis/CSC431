@@ -1,0 +1,43 @@
+fun main() int
+{
+    int i;
+    {
+        i = 0;
+        if (i > 0)
+        {
+            while (true)
+            {
+                print -4;
+            }
+
+            if (i == 0)
+            {
+                print 3;
+            }
+            print 1;
+        }
+        else
+        {
+#            if (i == 3)
+#            {
+#                print 10;
+#            }
+            while (false)
+            {
+                print 8;
+            }
+            print 2;
+        }
+
+        while (true)
+        {
+            if (i < 0)
+            {
+                print 5;
+            }
+            print 7;
+        }
+
+        return 0;
+    }
+}

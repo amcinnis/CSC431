@@ -1,0 +1,9 @@
+struct A
+{
+   int i;
+   int j1;
+   bool b;
+   struct A a;
+   int i;
+   struct A a;
+};

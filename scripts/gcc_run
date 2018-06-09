@@ -1,0 +1,60 @@
+#!/bin/bash
+RED='\033[0;31m'
+NC='\033[0m'
+CYAN='\033[1;36m'
+
+BENCHMARKISH="BenchMarkishTopics"
+BERT="bert"
+BIGGEST="biggest"
+BINARYCONV="binaryConverter"
+BRETT="brett"
+CREATIVE="creativeBenchMarkName"
+FACTSUM="fact_sum"
+FIBONACCI="Fibonacci"
+GENERAL="GeneralFunctAndOptimize"
+HAILSTONE="hailstone"
+HANOI="hanoi_benchmark"
+KILLER="killerBubbles"
+MILE1="mile1"
+MIXED="mixed"
+OPTIMIZATION="OptimizationBenchmark"
+PRIMES="primes"
+PROGBREAKER="programBreaker"
+STATS="stats"
+TICTAC="TicTac"
+WASTE="wasteOfCycles"
+declare TESTS
+TESTS=($BENCHMARKISH $BERT $BIGGEST $BINARYCONV $BRETT $CREATIVE $FACTSUM $FIBONACCI $GENERAL $HAILSTONE $HANOI $KILLER $MILE1 $MIXED $OPTIMIZATION $PRIMES $PROGBREAKER $STATS $TICTAC $WASTE)
+x=$1
+i=${TESTS[$x]}
+d=false;
+if [ $# -eq 2 ]; then
+   if [ $2 == "-d" ]; then
+   d=true
+   fi
+fi
+echo -e "${NC}-------------------------------------------------"
+echo -e "Testing GCC/C code for ${CYAN}'$i'${NC}"
+echo -e "-------------------------------------------------"
+ 
+gcc ./benchmarks/${i}/${i}.c
+   if [ -e a.out ] 
+   then
+      time ./a.out < benchmarks/${i}/input > our_out
+      if [ -e our_out ]
+      then
+         diff benchmarks/${i}/output our_out
+         if [ $d == "true" ]; then
+            rm our_out
+         fi
+         else
+         echo -e "${NC}Output for ${CYAN}${i}${NC} does not exist"
+      fi
+      if [ $d == "true" ]; then
+         rm a.out
+      fi
+   else
+      echo -e "${RED}-------------------------------------------------"
+      echo -e "GCC Compilation for ${CYAN}${i}${RED} failed"
+      echo -e "-------------------------------------------------"
+   fi

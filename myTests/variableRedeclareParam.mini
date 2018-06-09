@@ -1,0 +1,4 @@
+fun foo (int test) void {
+
+    int hello, there, test;
+}

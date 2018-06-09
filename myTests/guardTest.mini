@@ -1,0 +1,17 @@
+fun main() int {
+
+    int i;
+    int j;
+
+    {
+        i = 0;
+        j = 1;
+
+        if (i * j) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    }
+}

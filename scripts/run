@@ -1,0 +1,90 @@
+#!/bin/bash
+RED='\033[0;31m'
+NC='\033[0m'
+CYAN='\033[1;36m'
+
+TESTDIR="../../test/given_parser/"
+
+BENCHMARKISH="BenchMarkishTopics"
+BERT="bert"
+BIGGEST="biggest"
+BINARYCONV="binaryConverter"
+BRETT="brett"
+CREATIVE="creativeBenchMarkName"
+FACTSUM="fact_sum"
+FIBONACCI="Fibonacci"
+GENERAL="GeneralFunctAndOptimize"
+HAILSTONE="hailstone"
+HANOI="hanoi_benchmark"
+KILLER="killerBubbles"
+MILE1="mile1"
+MIXED="mixed"
+OPTIMIZATION="OptimizationBenchmark"
+PRIMES="primes"
+PROGBREAKER="programBreaker"
+STATS="stats"
+TICTAC="TicTac"
+WASTE="wasteOfCycles"
+#array of all test case dir names
+declare TESTS
+TESTS=($BENCHMARKISH $BERT $BIGGEST $BINARYCONV $BRETT $CREATIVE $FACTSUM $FIBONACCI $GENERAL $HAILSTONE $HANOI $KILLER $MILE1 $MIXED $OPTIMIZATION $PRIMES $PROGBREAKER $STATS $TICTAC $WASTE)
+
+#REMOTE_PATH="~/Documents/431/ms3"
+#SSH="scschmid@unix2.csc.calpoly.edu"
+
+REMOTE_PATH="~/Documents/431/ms4"
+STEPHEN="scschmid@unix2.csc.calpoly.edu"
+NADIR="nfayazov@unix2.csc.calpoly.edu"
+
+if [ $1 == "-n" ];  then
+    SSHPATH=$NADIR
+else
+    SSHPATH=$STEPHEN
+fi
+#this is the current index of the test case we are running
+#since we're running one at a time
+XFR=true
+if [ $# -ge 3 ]; then
+   if [ $3 == "-nt" ]; then
+       XFR=false
+   fi
+fi
+VERBOSE=false
+if [ $# -eq 4 ]; then
+    if [ $4 == "-v" ]; then
+        VERBOSE=true
+    fi
+fi
+
+if ! [ -e "ll" ]; then
+    mkdir ll
+fi
+
+if ! [ -e "s" ]; then
+    mkdir s
+fi
+
+#get the current benchmark to run
+CUR=$2
+
+#if verbose, print the output to screen otherwise redicrect and delete
+echo -e "------------------------------------------------------------"
+echo -e "Building LLVM and ARM for ${CYAN}${TESTS[${CUR}]}${NC}"
+if [ $VERBOSE == "true" ]; then
+    java MiniCompiler ${TESTDIR}${TESTS[${CUR}]}/${TESTS[${CUR}]}.mini 
+else
+    java MiniCompiler ${TESTDIR}${TESTS[${CUR}]}/${TESTS[${CUR}]}.mini > output
+    rm output
+fi
+#move output files to their corresponding directories
+mv ${TESTDIR}${TESTS[${CUR}]}/${TESTS[${CUR}]}2.ll ll
+mv ${TESTDIR}${TESTS[${CUR}]}/${TESTS[${CUR}]}2.s s
+
+if [ $XFR == "true" ]; then
+#transfers llvm and s files to unix servers
+    echo -e "Transferring output files for  ${CYAN}${TESTS[${CUR}]}${NC} to Unix servers..."
+    scp ll/${TESTS[${CUR}]}2.ll ${SSHPATH}:${REMOTE_PATH}/llvm
+    scp s/${TESTS[${CUR}]}2.s ${SSHPATH}:${REMOTE_PATH}/s
+fi
+
+echo -e "------------------------------------------------------------\n"

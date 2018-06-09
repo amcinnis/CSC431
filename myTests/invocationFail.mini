@@ -1,0 +1,10 @@
+fun main() int
+{
+
+    int i;
+    {
+        f();
+    }
+
+    return 0;
+}

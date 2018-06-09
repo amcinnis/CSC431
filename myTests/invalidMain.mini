@@ -1,0 +1,12 @@
+fun main() void {
+
+}
+
+fun main(int r) int {
+
+}
+
+#Valid main
+fun main() int {
+
+}
