@@ -73,7 +73,7 @@ define void @domath(i32 %num)
 	store i32 %u20, i32* %u22
 	%u23 = load %struct.foo** %math2
 	%u24 = getelementptr %struct.foo* %u23, i1 0, i32 0
-	store null 3, null* %u24
+	store i32 3, i32* %u24
 	%u25 = load %struct.foo** %math1
 	%u26 = getelementptr %struct.foo* %u25, i1 0, i32 0
 	%u27 = load i32* %u26
