@@ -32,7 +32,8 @@ public class Checker {
         for (TypeDeclaration struct : types) {
             String name = struct.getName();
             if (structsMap.containsKey(name)) {
-                System.out.println("Error: Struct \"" + name + "\" previously defined!");
+                System.err.println("Error: Struct \"" + name + "\" previously defined!");
+                System.exit(1);
             }
             else {
                 structsMap.put(name, struct);
@@ -43,7 +44,8 @@ public class Checker {
             for (Declaration field : fields) {
                 String fieldName = field.getName();
                 if (!(fieldNameSet.add(fieldName))) {
-                    System.out.println("Error: Field \"" + fieldName + "\" previously defined in struct \"" + name + "\"!");
+                    System.err.println("Error: Field \"" + fieldName + "\" previously defined in struct \"" + name + "\"!");
+                    System.exit(1);
                 }
 
                 //Check if struct name has been previously defined and in scope
@@ -52,7 +54,8 @@ public class Checker {
                     StructType structType = (StructType) fieldType;
                     String structTypeName = structType.getName();
                     if (!(structsMap.containsKey(structTypeName))) {
-                        System.out.println("Error: struct \"" + structTypeName + "\" not previously defined!");
+                        System.err.println("Error: struct \"" + structTypeName + "\" not previously defined!");
+                        System.exit(1);
                     }
                 }
             }
@@ -67,7 +70,8 @@ public class Checker {
         for (Declaration decl : decls) {
             String id = decl.getName();
             if (globalsMap.containsKey(id)) {
-                System.out.println("Error: Global variable \'" + id + "\" previously defined!");
+                System.err.println("Error: Global variable \'" + id + "\" previously defined!");
+                System.exit(1);
             } else {
                 globalsMap.put(id, decl);
             }
@@ -83,7 +87,8 @@ public class Checker {
 
             //Check for duplicate functions
             if (functionsMap.containsKey(functionName)) {
-                System.out.println("Error: Function \"" + functionName + "\" previously defined!");
+                System.err.println("Error: Function \"" + functionName + "\" previously defined!");
+                System.exit(1);
             }
             else {
                 functionsMap.put(functionName, function);
@@ -94,8 +99,9 @@ public class Checker {
             for (Declaration parameter : function.getParams()) {
                 String paramName = parameter.getName();
                 if (!(parameterNameSet.add(paramName))) {
-                    System.out.println("Error: Parameter \"" + paramName + "\" in function \"" + functionName
+                    System.err.println("Error: Parameter \"" + paramName + "\" in function \"" + functionName
                             + "\" was previously defined!");
+                    System.exit(1);
                 }
             }
 
@@ -104,23 +110,27 @@ public class Checker {
             for (Declaration variable : function.getLocals()) {
                 String varName = variable.getName();
                 if (!(varNameSet.add(varName))) {
-                    System.out.println("Error: Variable \"" + varName + "\" in function \"" + functionName
+                    System.err.println("Error: Variable \"" + varName + "\" in function \"" + functionName
                             + "\" was previously defined!");
+                    System.exit(1);
                 }
 
                 //Check for variables with same name as params
                 if (parameterNameSet.contains(varName)) {
-                    System.out.println("Error: Variable \"" + varName + "\" may not redeclare parameter of same name!");
+                    System.err.println("Error: Variable \"" + varName + "\" may not redeclare parameter of same name!");
+                    System.exit(1);
                 }
             }
 
             //Check for valid main function
             if (functionName.equals("main")) {
                 if (function.getParams().size() > 0) {
-                    System.out.println("Error: \"main\" function requires zero arguments");
+                    System.err.println("Error: \"main\" function requires zero arguments");
+                    System.exit(1);
                 }
                 if (!(function.getRetType() instanceof IntType)) {
-                    System.out.println("Error: \"main\" function requires return type of type 'int'");
+                    System.err.println("Error: \"main\" function requires return type of type 'int'");
+                    System.exit(1);
                 }
             }
 
@@ -135,9 +145,10 @@ public class Checker {
                         validateReturn(newBlock, functionName);
                     }
                     else {
-                        System.out.println("Error! Line " + newBlock.getLineNum() + ": Function '" + functionName +
+                        System.err.println("Error! Line " + newBlock.getLineNum() + ": Function '" + functionName +
                                 "' expects return type of type " + typeToString(retType) +
                                 " but is missing a return statement!");
+                        System.exit(1);
                     }
                 }
             }
@@ -145,7 +156,8 @@ public class Checker {
 
         //Check for main function
         if (!functionsMap.containsKey("main")) {
-            System.out.println("Error!: Program is missing main method!");
+            System.err.println("Error!: Program is missing main method!");
+            System.exit(1);
         }
     }
 
@@ -182,7 +194,8 @@ public class Checker {
                         ConditionalStatement conditional = (ConditionalStatement) statement;
                         containsReturn = validateConditionalReturn(conditional);
                         if (!containsReturn) {
-                            System.out.println("Error!: Function '" + functionName + "' does not have valid return structure!");
+                            System.err.println("Error!: Function '" + functionName + "' does not have valid return structure!");
+                            System.exit(1);
                         }
                     }
                 }
@@ -213,12 +226,14 @@ public class Checker {
         }
 
         if (thenReturn && !elseReturn) {
-            System.out.println("Error! Line " + elseLineNum + ": Else block does not contain return statement when " +
+            System.err.println("Error! Line " + elseLineNum + ": Else block does not contain return statement when " +
                     "preceding if block does!");
+            System.exit(1);
         }
         else if (!thenReturn && elseReturn) {
-            System.out.println("Error! Line " + thenLineNum + ": If block does not contain return statement when " +
+            System.err.println("Error! Line " + thenLineNum + ": If block does not contain return statement when " +
                     "following else block does!");
+            System.exit(1);
         }
 
         return (thenReturn && elseReturn);
@@ -309,8 +324,9 @@ public class Checker {
             Type returnType = function.getRetType();
 
             if (!(returnType instanceof VoidType)) {
-                System.out.println("Error! Line " + lineNum + ": Funtion '" + functionName +
+                System.err.println("Error! Line " + lineNum + ": Function '" + functionName +
                         "' requires return of type " + typeToString(returnType) + ".");
+                System.exit(1);
             }
         }
     }
@@ -326,12 +342,13 @@ public class Checker {
             if (returnType != null) {
                 if (!(returnType.getClass().equals(declaredReturnType.getClass()))) {
                     int lineNum = ((AbstractExpression) expression).getLineNum();
-                    System.out.println("Error! Line " + lineNum + ": Return type of type '" + typeToString(returnType) +
+                    System.err.println("Error! Line " + lineNum + ": Return type of type '" + typeToString(returnType) +
                             "' does not match declared return type of type '" + typeToString(declaredReturnType) + "'.");
+                    System.exit(1);
                 }
             }
             else {
-                System.out.println("Null return type");
+//                System.out.println("Null return type");
             }
         }
     }
@@ -368,12 +385,14 @@ public class Checker {
         if (rightType != null) {
             if (leftType != null) {
                 if (!(leftType.getClass().equals(rightType.getClass()))) {
-                    System.out.println("Line " + lineNum + ": Incompatible types in assignment! " +
+                    System.err.println("Line " + lineNum + ": Incompatible types in assignment! " +
                             leftId + ":" + typeToString(leftType) + " R:" + typeToString(rightType));
+                    System.exit(1);
                 }
             }
             else {
-                System.out.println("LHS of AssignmentStatement is null!");
+                System.err.println("LHS of AssignmentStatement is null!");
+                System.exit(1);
             }
         }
     }
@@ -407,7 +426,8 @@ public class Checker {
                 return farLeftType;
             }
             else {
-                System.out.println(farLeftName + "is not of type 'struct'!");
+                System.err.println(farLeftName + "is not of type 'struct'!");
+                System.exit(1);
             }
         }
         else if (left instanceof InvocationExpression) {
@@ -422,8 +442,9 @@ public class Checker {
             }
             else {
                 int lineNum = invocationExpression.getLineNum();
-                System.out.println("Error! Line " + lineNum + ": Function '" +
+                System.err.println("Error! Line " + lineNum + ": Function '" +
                         invExpName + "' not previously defined!");
+                System.exit(1);
             }
         }
         else if (left instanceof DotExpression) {
@@ -462,7 +483,8 @@ public class Checker {
                 }
                 throw new StructFieldNotFoundException(structName);
             } else {
-                System.out.println("Struct " + structName + " not previously defined!");
+                System.err.println("Struct " + structName + " not previously defined!");
+                System.exit(1);
             }
         }
         else {
@@ -494,8 +516,9 @@ public class Checker {
                 List <Declaration> parameters = function.getParams();
 
                 if (arguments.size() != parameters.size()) {
-                    System.out.println("Error! Line " + lineNum + ": Number of arguments do not match number of " +
+                    System.err.println("Error! Line " + lineNum + ": Number of arguments do not match number of " +
                             "parameters for function '" + invExpName + "'.");
+                    System.exit(1);
                 }
                 else {
                     Type argType, paramType;
@@ -508,13 +531,15 @@ public class Checker {
 
                         if (argType != null) {
                             if (!(argType.getClass().equals(paramType.getClass()))) {
-                                System.out.println("Error! Line " + lineNum + ": Argument " + (i+1) + " of function '" + invExpName +
+                                System.err.println("Error! Line " + lineNum + ": Argument " + (i+1) + " of function '" + invExpName +
                                         "' expects argument of type " + typeToString(paramType)
                                         + ", found " + typeToString(argType) + ".");
+                                System.exit(1);
                             }
                         }
                         else {
-                            System.out.println("Received null return type for argument from getExpressionType()");
+                            System.err.println("Received null return type for argument from getExpressionType()");
+                            System.exit(1);
                         }
                     }
                 }
@@ -529,8 +554,9 @@ public class Checker {
             return function;
         }
         else {
-            System.out.println("Error! Line " + lineNum + ": Function '" +
+            System.err.println("Error! Line " + lineNum + ": Function '" +
                     functionName + "' not previously defined!");
+            System.exit(1);
             return null;
         }
     }
@@ -580,32 +606,60 @@ public class Checker {
             if (opName.equals("AND") || opName.equals("OR")) {
                 //Check that leftType and rightType are both BoolType
                 if (!(leftType instanceof BoolType && rightType instanceof BoolType)) {
-                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                    System.err.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                             "Logical operators require both types to be of type boolean.");
+                    System.exit(1);
                 }
             }
             else if (opName.equals("EQ") || opName.equals("NE")) {
                 //Check that leftType and rightType are same type
                 if (!(leftType instanceof IntType || leftType instanceof StructType)) {
                     if (!(leftType.equals(rightType))) {
-                        System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                        System.err.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                                 "Equality operators require types to be of same type integer or struct.");
+                        System.exit(1);
                     }
                 }
             }
             else {
                 //Check that leftType and rightType are both IntType
                 if (!(leftType instanceof IntType && rightType instanceof IntType)) {
-                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                    System.err.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                             "Arithmetic and Relational operators require both types to be of type int.");
+                    System.exit(1);
                 }
             }
         }
         else if (guardExp instanceof TrueExpression || guardExp instanceof FalseExpression) {
             return;
         }
+        else if (guardExp instanceof InvocationExpression) {
+            InvocationExpression invocation = (InvocationExpression)guardExp;
+            Function function = getFunction(invocation.getName(), invocation.getLineNum());
+            List<Declaration> params = function.getParams();
+            List<Expression> args = invocation.getArguments();
+            for (int i = 0; i < args.size(); i++) {
+                Expression arg = args.get(i);
+                Type argType = getExpressionType(arg, functionName);
+                Declaration param = params.get(i);
+                Type paramType = param.getType();
+                if (!(argType.getClass().equals(paramType.getClass()))) {
+                    System.err.println("Error! Line " + invocation.getLineNum() + ": Argument " + (i+1)
+                            + " of function '" + invocation.getName() +
+                            "' expects argument of type " + typeToString(paramType)
+                            + ", found " + typeToString(argType) + ".");
+                    System.exit(1);
+                }
+            }
+
+            Type returnType = function.getRetType();
+            if (!(returnType instanceof BoolType)) {
+                System.err.println("Error! Function '" + functionName + "' does not have return type of type Boolean!");
+                System.exit(1);
+            }
+        }
         else {
-            System.out.println("Non Binary expression in guard of Conditional");
+            System.out.println("Unaccounted for expression in checkGuardExpression!");
         }
     }
 
@@ -615,7 +669,8 @@ public class Checker {
 
         if (!(type instanceof IntType)) {
             int lineNum = ((AbstractExpression) expression).getLineNum();
-            System.out.println("Error! Line " + lineNum + ": Print statement requires integer argument.");
+            System.err.println("Error! Line " + lineNum + ": Print statement requires integer argument.");
+            System.exit(1);
         }
     }
 
@@ -625,7 +680,8 @@ public class Checker {
 
         if (!(type instanceof IntType)) {
             int lineNum = ((AbstractExpression) expression).getLineNum();
-            System.out.println("Error! Line " + lineNum + ": PrintLn statement requires integer argument.");
+            System.err.println("Error! Line " + lineNum + ": PrintLn statement requires integer argument.");
+            System.exit(1);
         }
     }
 
@@ -680,8 +736,9 @@ public class Checker {
                 return new StructType(newExpression.getLineNum(), id);
             }
             else {
-                System.out.println("Error! Line " + newExpression.getLineNum() + ": Cannot create struct of type '"
+                System.err.println("Error! Line " + newExpression.getLineNum() + ": Cannot create struct of type '"
                         + id + "'! Struct not previously defined!");
+                System.exit(1);
             }
         }
         else if (expression instanceof BinaryExpression) {
@@ -700,8 +757,9 @@ public class Checker {
             if (opName.equals("AND") || opName.equals("OR")) {
                 //Check that leftType and rightType are both BoolType
                 if (!(leftType instanceof BoolType && rightType instanceof BoolType)) {
-                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                    System.err.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                             "Logical operators require both types to be of type boolean.");
+                    System.exit(1);
                 }
                 else {
                     return new BoolType();
@@ -711,8 +769,9 @@ public class Checker {
                 //Check that leftType and rightType are same type
                 if (!(leftType instanceof IntType || leftType instanceof StructType)) {
                     if (!(leftType.equals(rightType))) {
-                        System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                        System.err.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                                 "Equality operators require types to be of same type integer or struct.");
+                        System.exit(1);
                     }
                 }
                 else {
@@ -722,8 +781,9 @@ public class Checker {
             else {
                 //Check that leftType and rightType are both IntType
                 if (!(leftType instanceof IntType && rightType instanceof IntType)) {
-                    System.out.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
+                    System.err.println("Error! Line " + lineNum + ": Incompatible types in conditional guard! " +
                             "Arithmetic and Relational operators require both types to be of type int.");
+                    System.exit(1);
                 }
                 else {
                     if (opName.equals("GT") || opName.equals("GE") || opName.equals("LT") || opName.equals("LE")) {
@@ -770,7 +830,8 @@ public class Checker {
             return identifier.getType();
         }
 
-        System.out.println("Error! Cannot find identifier \"" + name + "\"!");
+        System.err.println("Error! Cannot find identifier \"" + name + "\"!");
+        System.exit(1);
 
         return null;
     }

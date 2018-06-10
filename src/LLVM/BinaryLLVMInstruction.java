@@ -1,6 +1,7 @@
 package LLVM;
 
 import ARM.*;
+import CFG.CFGGenerator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,7 +41,25 @@ public abstract class BinaryLLVMInstruction extends ResultingLLVMInstruction {
             String armOperand1 = armParamLookup(registerMap, this.getOperand1());
             String armOperand2 = armParamLookup(registerMap, this.getOperand2());
 //            instructions.add("\t" + op + " " + this.getResult() + ", " + armOperand1 + ", " + armOperand2 + "\n");
-            instructions.addAll(instructionLookup(op, this.getResult(), armOperand1, armOperand2));
+            if (!(armOperand1.contains("#") || armOperand2.contains("#"))) {
+                instructions.addAll(instructionLookup(op, this.getResult(), armOperand1, armOperand2));
+            }
+            else {
+                String temp1 = null;
+                String temp2 = null;
+                if (armOperand1.contains("#")) {
+                    temp1 = CFGGenerator.newTempRegLabel();
+                    instructions.add(new MoveARMInstruction(temp1, armOperand1));
+                }
+                if (armOperand2.contains("#")) {
+                    temp2 = CFGGenerator.newTempRegLabel();
+                    instructions.add(new MoveARMInstruction(temp2, armOperand2));
+                }
+
+                String finalOp1 = (temp1 == null) ? armOperand1 : temp1;
+                String finalOp2 = (temp2 == null) ? armOperand2 : temp2;
+                instructions.addAll(instructionLookup(op, this.getResult(), finalOp1, finalOp2));
+            }
         }
 
         return instructions;

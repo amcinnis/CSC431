@@ -3,7 +3,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 CYAN='\033[1;36m'
 
-TESTDIR="../../test/given_parser/"
+#TESTDIR="../../test/given_parser/"
+TESTDIR="../benchmarks/"
 
 BENCHMARKISH="BenchMarkishTopics"
 BERT="bert"
@@ -32,15 +33,18 @@ TESTS=($BENCHMARKISH $BERT $BIGGEST $BINARYCONV $BRETT $CREATIVE $FACTSUM $FIBON
 #REMOTE_PATH="~/Documents/431/ms3"
 #SSH="scschmid@unix2.csc.calpoly.edu"
 
-REMOTE_PATH="~/Documents/431/ms4"
+REMOTE_PATH="~/csc431/ms4"
 STEPHEN="scschmid@unix2.csc.calpoly.edu"
 NADIR="nfayazov@unix2.csc.calpoly.edu"
+AUSTIN="amcinnis@unix3.csc.calpoly.edu"
+#if [ $1 == "-n" ];  then
+#    SSHPATH=$NADIR
+#else
+#    SSHPATH=$STEPHEN
+#fi
 
-if [ $1 == "-n" ];  then
-    SSHPATH=$NADIR
-else
-    SSHPATH=$STEPHEN
-fi
+SSHPATH=$AUSTIN
+
 #this is the current index of the test case we are running
 #since we're running one at a time
 XFR=true

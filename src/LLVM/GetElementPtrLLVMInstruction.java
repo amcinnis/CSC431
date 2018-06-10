@@ -19,6 +19,10 @@ public class GetElementPtrLLVMInstruction extends ResultingLLVMInstruction {
         this.index = index;
     }
 
+    public String getIndex() {
+        return index;
+    }
+
     @Override
     public String toString() {
         return "\t" + this.getResult() + " = getelementptr " + this.getType() + " " + pointerValue +

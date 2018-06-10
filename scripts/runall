@@ -8,14 +8,16 @@ REMOTE_PATH="~/Documents/431/ms4"
 STEPHEN="scschmid@unix2.csc.calpoly.edu"
 NADIR="nfayazov@unix2.csc.calpoly.edu"
 
-if [ $1 == "-n" ];  then
-    SSHPATH=$NADIR
-else
-    SSHPATH=$STEPHEN
-fi
+#if [ $1 == "-n" ];  then
+#    SSHPATH=$NADIR
+#else
+#   SSHPATH=$STEPHEN
+#fi
+
+SSHPATH="amcinnis@unix3.csc.calpoly.edu"
 
 for i in `seq 0 19`; do
-    ./run $1 $i -nt
+    ./run $i -nt
 done
 echo -e "${CYAN} Transfering to Unix Server...$NC"
 scp ll/*.ll ${SSHPATH}:${REMOTE_PATH}/llvm

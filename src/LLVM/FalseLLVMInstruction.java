@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class FalseLLVMExpression implements LLVMInstruction {
+public class FalseLLVMInstruction implements LLVMInstruction {
 
     @Override
     public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {

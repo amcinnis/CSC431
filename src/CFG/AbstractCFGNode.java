@@ -42,10 +42,7 @@ public abstract class AbstractCFGNode implements Node {
         ignore.add("pc");
 
         for (ARMInstruction instruction : ARMInstructions) {
-            if (instruction instanceof BranchARMInstruction) {
-                continue;
-            }
-            else if (instruction instanceof PushARMInstruction) {
+            if (instruction instanceof PushARMInstruction) {
                 continue;
             }
             else if (instruction instanceof PopARMInstruction) {
@@ -54,50 +51,50 @@ public abstract class AbstractCFGNode implements Node {
             else if (instruction instanceof ARMString) {
                 continue;
             }
+            else if (instruction instanceof BranchARMInstruction) {
+                BranchARMInstruction branch = (BranchARMInstruction)instruction;
+                if (branch.getCode() != null && branch.getCode().equals("l")) {
+                    //TODO: handle branch and link
+                    List<String> sources = branch.getSources();
+                    List<String> targets = branch.getTargets();
+                    checkSources(ignore, sources);
+                    checkTargets(ignore, targets);
+                }
+            }
             else if (instruction instanceof BinaryARMInstruction) {
                 BinaryARMInstruction binary = (BinaryARMInstruction)instruction;
                 List<String> sources = binary.getSources();
 //                String source1 = binary.getOperand1();
 //                String source2 = binary.getOperand2();
-                String target = binary.getTarget();
-                for (String source : sources) {
-                    checkSource(ignore, source);
-                }
-//                checkSource(ignore, source1);
-//                checkSource(ignore, source2);
-                checkTarget(ignore, target);
+                List<String> targets = binary.getTargets();
+                checkSources(ignore, sources);
+//                checkSources(ignore, source1);
+//                checkSources(ignore, source2);
+                checkTargets(ignore, targets);
             }
             else if (instruction instanceof CompareARMInstruction) {
                 CompareARMInstruction compare = (CompareARMInstruction)instruction;
                 List<String> sources = compare.getSources();
-                for (String source : sources) {
-                    checkSource(ignore, source);
-                }
+                checkSources(ignore, sources);
             }
             else if (instruction instanceof LoadARMInstruction) {
                 LoadARMInstruction load = (LoadARMInstruction)instruction;
                 List<String> sources = load.getSources();
-                String target = load.getTarget();
-                for (String source : sources) {
-                    checkSource(ignore, source);
-                }
-                checkTarget(ignore, target);
+                List<String> targets = load.getTargets();
+                checkSources(ignore, sources);
+                checkTargets(ignore, targets);
             }
             else if (instruction instanceof StoreARMInstruction) {
                 StoreARMInstruction store = (StoreARMInstruction)instruction;
                 List<String> sources = store.getSources();
-                for (String source : sources) {
-                    checkSource(ignore, source);
-                }
+                checkSources(ignore, sources);
             }
             else if (instruction instanceof MoveARMInstruction) {
                 MoveARMInstruction move = (MoveARMInstruction)instruction;
                 List<String> sources = move.getSources();
-                String target = move.getOperand1();
-                for (String source : sources) {
-                    checkSource(ignore, source);
-                }
-                checkTarget(ignore, target);
+                List<String> targets = move.getTargets();
+                checkSources(ignore, sources);
+                checkTargets(ignore, targets);
             }
             else {
                 System.out.print("Unimplemented instruction in generateGenKill!");
@@ -105,17 +102,21 @@ public abstract class AbstractCFGNode implements Node {
         }
     }
 
-    private void checkSource(HashSet<String> ignore, String source) {
-        if (ignore.stream().parallel().noneMatch(source::contains)) {
-            if (!(killSet.contains(source))) {
-                genSet.add(source);
+    private void checkSources(HashSet<String> ignore, List<String> sources) {
+        for (String source : sources) {
+            if (ignore.stream().parallel().noneMatch(source::contains)) {
+                if (!(killSet.contains(source))) {
+                    genSet.add(source);
+                }
             }
         }
     }
 
-    private void checkTarget(HashSet<String> ignore, String target) {
-        if (ignore.stream().parallel().noneMatch(target::contains)) {
-            killSet.add(target);
+    private void checkTargets(HashSet<String> ignore, List<String> targets) {
+        for (String target : targets) {
+            if (ignore.stream().parallel().noneMatch(target::contains)) {
+                killSet.add(target);
+            }
         }
     }
 

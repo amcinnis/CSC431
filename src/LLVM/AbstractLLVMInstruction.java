@@ -3,6 +3,7 @@ package LLVM;
 import java.util.HashMap;
 
 public abstract class AbstractLLVMInstruction implements LLVMInstruction {
+
     public boolean isInteger(String id) {
         boolean valid;
         try {

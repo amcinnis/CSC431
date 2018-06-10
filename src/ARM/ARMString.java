@@ -11,13 +11,23 @@ public class ARMString extends AbstractARMInstruction {
     }
 
     @Override
-    public String getTarget() {
+    public List<String> getTargets() {
         return null;
     }
 
     @Override
     public List<String> getSources() {
         return null;
+    }
+
+    @Override
+    public void setTargets(List<String> newTarget) {
+        System.out.println("Error! setTargets called on ARMString!");
+    }
+
+    @Override
+    public void setSources(List<String> newSources) {
+        System.out.println("Error! setSources called on ARMString!");
     }
 
     @Override

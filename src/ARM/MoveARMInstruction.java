@@ -22,8 +22,10 @@ public class MoveARMInstruction extends AbstractARMInstruction {
     }
 
     @Override
-    public String getTarget() {
-        return operand1;
+    public List<String> getTargets() {
+        List <String> targets = new ArrayList<>();
+        targets.add(operand1);
+        return targets;
     }
 
     @Override
@@ -31,6 +33,16 @@ public class MoveARMInstruction extends AbstractARMInstruction {
         List<String> sources = new ArrayList<>();
         sources.add(operand2);
         return sources;
+    }
+
+    @Override
+    public void setTargets(List<String> newTarget) {
+        this.operand1 = newTarget.get(0);
+    }
+
+    @Override
+    public void setSources(List<String> newSources) {
+        this.operand2 = newSources.get(0);
     }
 
     public String getOperand1() {

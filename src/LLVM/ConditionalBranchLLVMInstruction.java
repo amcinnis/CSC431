@@ -31,9 +31,9 @@ public class ConditionalBranchLLVMInstruction extends AbstractLLVMInstruction {
 //        instructions.add("\tcmp " + this.condition + ", #1\n");
         instructions.add(new CompareARMInstruction(this.condition, "#1"));
 //        instructions.add("\tbeq ." + this.thenLabel + "\n");
-        instructions.add(new BranchARMInstruction("eq", "." + this.thenLabel));
+        instructions.add(new BranchARMInstruction("eq", this.thenLabel));
 //        instructions.add("\tb ." + this.elseLabel + "\n");
-        instructions.add(new BranchARMInstruction("." + this.elseLabel));
+        instructions.add(new BranchARMInstruction(this.elseLabel));
         return instructions;
     }
 }

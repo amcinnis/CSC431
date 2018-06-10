@@ -14,7 +14,7 @@ public class StoreARMInstruction extends AbstractARMInstruction {
     }
 
     @Override
-    public String getTarget() {
+    public List<String> getTargets() {
         return null;
     }
 
@@ -24,6 +24,21 @@ public class StoreARMInstruction extends AbstractARMInstruction {
         sources.add(operand1);
         sources.add(operand2);
         return sources;
+    }
+
+    @Override
+    public void setTargets(List<String> newTarget) {
+
+    }
+
+    @Override
+    public void setSources(List<String> newSources) {
+        if (newSources.size() >= 1) {
+            this.operand1 = newSources.get(0);
+        }
+        if (newSources.size() == 2) {
+            this.operand2 = newSources.get(1);
+        }
     }
 
     public String getOperand1() {
@@ -36,6 +51,6 @@ public class StoreARMInstruction extends AbstractARMInstruction {
 
     @Override
     public String toString() {
-        return "\tstr " + this.operand1 + ", " + this.operand2 + "\n";
+        return "\tstr " + this.operand1 + ", [" + this.operand2 + "]\n";
     }
 }

@@ -45,14 +45,21 @@ public class LLVMGenerator {
             printNodeLabel(current);
             printNodeLLVM(current.llvmStrings);
             printNodeARM(current);
-            printNode(current.next);
+            Node _next = current.next;
+            if (_next instanceof AbstractCFGNode) {
+                AbstractCFGNode next = (AbstractCFGNode)_next;
+                if (!(this.visitedNodes.contains(next.getLabel()))) {
+                    printNode(next);
+                }
+            }
+//            printNode(current.next);
         }
         else if (node instanceof ConditionalCFGNode) {
             ConditionalCFGNode current = (ConditionalCFGNode)node;
-            if (printNodeLabel(current)) {
-                printNodeLLVM(current.llvmStrings);
-                printNodeARM(current);
-            }
+            printNodeLabel(current);
+            printNodeLLVM(current.llvmStrings);
+            printNodeARM(current);
+
 
             Node thenNode = current.thenNode;
             if (printNodeLabel(thenNode)) {
@@ -102,13 +109,9 @@ public class LLVMGenerator {
     private void printNodeARM(AbstractCFGNode node) {
         try {
             for (ARMInstruction armInstruction : node.ARMInstructions) {
+                System.out.print(armInstruction.toString());
                 armWriter.write(armInstruction.toString());
             }
-//            for (Instruction instruction : node.instructions) {
-//                for (String armInstruction : instruction.toARM()) {
-//                    armWriter.write(armInstruction);
-//                }
-//            }
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -161,6 +164,17 @@ public class LLVMGenerator {
         node.llvmStrings.add("@.print = private unnamed_addr constant [5 x i8] c\"%ld \\00\", align 1\n");
         node.llvmStrings.add("@.read = private unnamed_addr constant [4 x i8] c\"%ld\\00\", align 1\n");
         node.llvmStrings.add("@.read_scratch = common global i32 0, align 8\n");
+        node.ARMInstructions.add(new ARMString("\t.section	.rodata\n"));
+        node.ARMInstructions.add(new ARMString("\t.align\t2\n"));
+        node.ARMInstructions.add(new ARMString(".PRINTLN_FMT:\n"));
+        node.ARMInstructions.add(new ARMString("\t.asciz\t\"%ld\\n\"\n"));
+        node.ARMInstructions.add(new ARMString("\t.align\t2\n"));
+        node.ARMInstructions.add(new ARMString(".PRINT_FMT:\n"));
+        node.ARMInstructions.add(new ARMString("\t.asciz\t\"%ld \"\n"));
+        node.ARMInstructions.add(new ARMString("\t.align\t2\n"));
+        node.ARMInstructions.add(new ARMString(".READ_FMT:\n"));
+        node.ARMInstructions.add(new ARMString("\t.asciz\t\"%ld\"\n"));
+        node.ARMInstructions.add(new ARMString("\t.comm\t.read_scratch,4,4\n"));
         node.ARMInstructions.add(new ARMString("\t.global __aeabi_idiv\n"));
         printNode(node);
     }

@@ -24,7 +24,7 @@ public class UnconditionalBranchLLVMInstruction extends AbstractLLVMInstruction 
     public List<ARMInstruction> toARM(HashMap<String, String> registerMap) {
         List<ARMInstruction> instructions = new ArrayList<>();
 //        instructions.add("\tb ." + this.destination + "\n");
-        instructions.add(new BranchARMInstruction("." + this.destination));
+        instructions.add(new BranchARMInstruction(this.destination));
         return instructions;
     }
 }

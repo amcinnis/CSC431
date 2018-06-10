@@ -1,0 +1,23 @@
+fun testRecursive(int a) int
+{
+    if (a == 0)
+    {
+        return a;
+    }
+    else
+    {
+        return testRecursive(a-1) + 1;
+    }
+}
+
+fun main() int
+{
+    int a;
+    int b;
+
+    a = 2;
+    b = testRecursive(a);
+    print b endl;
+
+    return b;
+}

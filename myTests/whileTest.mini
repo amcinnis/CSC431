@@ -1,0 +1,14 @@
+fun main() int
+{
+    int a;
+
+    a = 5;
+
+    while (a >= 0)
+    {
+        print a endl;
+        a = a - 1;
+    }
+
+    return a;
+}

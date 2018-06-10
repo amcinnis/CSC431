@@ -1,7 +1,9 @@
 package LLVM;
 
 import ARM.ARMInstruction;
+import ARM.MoveARMInstruction;
 import ARM.StoreARMInstruction;
+import CFG.CFGGenerator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,8 +43,16 @@ public class StoreLLVMInstruction extends AbstractLLVMInstruction {
         List<ARMInstruction> instructions = new ArrayList<>();
         String armValue = armParamLookup(registerMap, this.value);
         String armPointer = armParamLookup(registerMap, this.pointer);
-//        instructions.add("\tstr " + armValue + ", " + armPointer + "\n");
-        instructions.add(new StoreARMInstruction(armValue, armPointer));
+//        instructions.add(new StoreARMInstruction(armValue, armPointer));
+        if (!(armValue.contains("#"))) {
+            instructions.add(new StoreARMInstruction(armValue, armPointer));
+        }
+        else {
+            //Immediate value
+            String tempReg = CFGGenerator.newTempRegLabel();
+            instructions.add(new MoveARMInstruction(tempReg, armValue));
+            instructions.add(new StoreARMInstruction(tempReg, armPointer));
+        }
         return instructions;
     }
 }

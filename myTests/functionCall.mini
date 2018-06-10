@@ -1,0 +1,14 @@
+fun test(int a) int
+{
+    return a + 1;
+}
+
+fun main() int
+{
+    int c;
+
+    c = test(3);
+    print c endl;
+
+    return 0;
+}

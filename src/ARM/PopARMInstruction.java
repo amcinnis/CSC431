@@ -11,8 +11,18 @@ public class PopARMInstruction extends AbstractARMInstruction {
     }
 
     @Override
-    public String getTarget() {
+    public List<String> getTargets() {
         return null;
+    }
+
+    @Override
+    public void setTargets(List<String> newTarget) {
+        System.out.println("Error! setTargets called on PopARMInstruction");
+    }
+
+    @Override
+    public void setSources(List<String> newSources) {
+        System.out.println("Error! setSources called on PopARMInstruction");
     }
 
     @Override
