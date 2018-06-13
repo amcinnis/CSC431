@@ -1,6 +1,6 @@
 target triple="i686"
 %struct.simple = type {i32}
-%struct.foo = type {i32, i32, %struct.simple*}
+%struct.foo = type {i32, i1, %struct.simple*}
 
 @globalfoo = common global %struct.foo* null, align 8
 
@@ -209,6 +209,8 @@ define i32 @ackermann(i32 %m, i32 %n)
 	%u100 = sub i32 %u99, 1
 	%u101 = call i32 @ackermann(i32 %u100, i32 1)
 	store i32 %u101, i32* %_retval_
+	br label %.LU15
+.JN2:
 	br label %.LU15
 .LU21:
 	%u102 = load i32* %_P_m

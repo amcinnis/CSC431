@@ -8,7 +8,7 @@ tailrecursive:
 	push {r4-r10, fp, lr}
 	add fp, sp, #4
 	sub sp, sp, #4
-	str r0, [fp, #-8]
+	str r10, [fp, #-8]
 	b .LU2
 .LU2:
 	ldr r5, [fp, #-8]
@@ -21,8 +21,9 @@ tailrecursive:
 .LU3:
 	b .LU0
 .JN0:
-	ldr r10, [fp, #-8]
-	sub r10, r10, #1
+	ldr r4, [fp, #-8]
+	mov r5, #1
+	sub r10, r4, r5
 	mov r0, r10
 	bl tailrecursive
 	b .LU0
@@ -159,7 +160,8 @@ domath:
 	sub r4, r5, r4
 	str r4, [fp, #-20]
 	ldr r4, [fp, #-8]
-	sub r4, r4, #1
+	mov r5, #1
+	sub r4, r4, r5
 	str r4, [fp, #-8]
 	ldr r5, [fp, #-8]
 	mov r4, #0
@@ -208,9 +210,10 @@ objinstantiation:
 	mov r10, r4
 	mov r0, r10
 	bl free
-	ldr r10, [fp, #-8]
-	sub r4, r10, #1
-	str r4, [fp, #-8]
+	ldr r5, [fp, #-8]
+	mov r4, #1
+	sub r10, r5, r4
+	str r10, [fp, #-8]
 	ldr r5, [fp, #-8]
 	mov r4, #0
 	cmp r5, #0
@@ -240,8 +243,9 @@ ackermann:
 	beq .LU18
 	b .JN1
 .LU18:
-	ldr r4, [fp, #-12]
-	add r4, r4, #1
+	ldr r5, [fp, #-12]
+	mov r4, #1
+	add r4, r5, r4
 	str r4, [fp, #-16]
 	b .LU15
 .JN1:
@@ -255,22 +259,27 @@ ackermann:
 	beq .LU20
 	b .LU21
 .LU20:
-	ldr r4, [fp, #-8]
-	sub r4, r4, #1
+	ldr r5, [fp, #-8]
+	mov r4, #1
+	sub r4, r5, r4
 	mov r0, r4
 	mov r1, #1
 	bl ackermann
 	mov r4, r0
 	str r4, [fp, #-16]
 	b .LU15
+.JN2:
+	b .LU15
 .LU21:
 	ldr r4, [fp, #-8]
-	sub r4, r4, #1
-	ldr r6, [fp, #-8]
-	ldr r5, [fp, #-12]
-	sub r5, r5, #1
-	mov r0, r6
-	mov r1, r5
+	mov r5, #1
+	sub r4, r4, r5
+	ldr r5, [fp, #-8]
+	ldr r6, [fp, #-12]
+	mov r7, #1
+	sub r6, r6, r7
+	mov r0, r5
+	mov r1, r6
 	bl ackermann
 	mov r5, r0
 	mov r0, r4

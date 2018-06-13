@@ -1,6 +1,9 @@
 package TypeChecker;
 
 import ast.*;
+
+import javax.lang.model.type.DeclaredType;
+import java.sql.Struct;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -9,9 +12,9 @@ public class Checker {
 
     private Program program;
 
-    private HashMap globalsMap = new HashMap();
-    private HashMap structsMap = new HashMap();
-    private HashMap functionsMap = new HashMap();
+    private HashMap<String, Declaration> globalsMap = new HashMap();
+    private HashMap<String, TypeDeclaration> structsMap = new HashMap();
+    private HashMap<String, Function> functionsMap = new HashMap();
 
     public Checker (Program program) {
         this.program = program;
@@ -658,9 +661,72 @@ public class Checker {
                 System.exit(1);
             }
         }
+        else if (guardExp instanceof IdentifierExpression) {
+            IdentifierExpression identifier = (IdentifierExpression)guardExp;
+            Type type = getExpressionType(identifier, functionName);
+            if (!(type instanceof BoolType)) {
+                System.err.println("Error! Identifier '" + identifier.getId() + "' on line " + identifier.getLineNum()
+                + " is not of type Boolean!");
+                System.exit(1);
+            }
+        }
+        else if (guardExp instanceof DotExpression) {
+            DotExpression dot = (DotExpression)guardExp;
+            Type type = checkDotExpression(dot, functionName);
+            if (!(type instanceof BoolType)) {
+                System.err.println("Error! Identifier '" + dot.getId() + "' on line " + dot.getLineNum()
+                        + " is not of type Boolean!");
+                System.exit(1);
+            }
+        }
+        else if (guardExp instanceof UnaryExpression) {
+            UnaryExpression unary = (UnaryExpression)guardExp;
+            Type type = getExpressionType(unary, functionName);
+            if (!(type instanceof BoolType)) {
+                System.err.println("Error! Unary Expression on line " + unary.getLineNum() + " is not of type Boolean!");
+                System.exit(1);
+            }
+        }
         else {
             System.out.println("Unaccounted for expression in checkGuardExpression!");
         }
+    }
+
+    private Type checkDotExpression(DotExpression dotExpression, String functionName) {
+        Expression _left = dotExpression.getLeft();
+        String id = dotExpression.getId();
+
+        if (_left instanceof IdentifierExpression) {
+            // get type of Identifier expression (should be struct type)
+            // Return type of id in that StructType
+            Type leftType = getExpressionType(_left, functionName);
+            return checkDotHelper(leftType, id, functionName);
+        }
+        else if (_left instanceof DotExpression) {
+            DotExpression left = (DotExpression)_left;
+            Type leftType = checkDotExpression(left, functionName);
+            return checkDotHelper(leftType, id, functionName);
+        }
+        else {
+            System.out.println("checkDotExpression in Checker received unaccounted for Expression");
+            return null;
+        }
+    }
+
+    private Type checkDotHelper(Type leftType, String id, String functionName) {
+        if (leftType instanceof StructType) {
+            StructType structType = (StructType)leftType;
+            TypeDeclaration struct = structsMap.get(structType.getName());
+            List<Declaration> fields = struct.getFields();
+            for (Declaration field : fields) {
+                if (field.getName().equals(id)) {
+                    return field.getType();
+                }
+            }
+        }
+
+        System.out.println("Failed to find type in checkDotHelper");
+        return null;
     }
 
     private void checkPrintStatement(PrintStatement printStatement, String functionName) {

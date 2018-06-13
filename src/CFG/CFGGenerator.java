@@ -175,13 +175,14 @@ public class CFGGenerator {
             List<String> typesList = new ArrayList<>();
             for (Declaration field : fields) {
                 Type type = field.getType();
-                if (type instanceof IntType || type instanceof BoolType) {
-                    typesList.add("i32");
-                }
-                else if (type instanceof StructType) {
-                    String name = ((StructType) type).getName();
-                    typesList.add("%struct." + name + "*");
-                }
+//                if (type instanceof IntType || type instanceof BoolType) {
+//                    typesList.add("i32");
+//                }
+//                else if (type instanceof StructType) {
+//                    String name = ((StructType) type).getName();
+//                    typesList.add("%struct." + name + "*");
+//                }
+                typesList.add(typeToLLVM(type));
             }
             instruction.append(String.join(", ", typesList) + "}\n");
             this.globalLLVM.add(instruction.toString());
@@ -206,7 +207,7 @@ public class CFGGenerator {
                 instruction.append("i32 0");
             }
             else if (type instanceof BoolType) {
-                instruction.append("i1*");
+                instruction.append("i1 false");
             }
             instruction.append(", align 8\n");
 
@@ -261,10 +262,10 @@ public class CFGGenerator {
             String name = param.getName();
             if (paramType instanceof IntType || paramType instanceof BoolType) {
                 //LLVM
-                llvmParams.add("i32 %" + name);
+                llvmParams.add(typeToLLVM(paramType) + " %" + name);
                 AllocateLLVMInstruction paramAlloc = new AllocateLLVMInstruction("%_P_" + name, typeToLLVM(paramType));
                 allocateLLVM.add(paramAlloc);
-                StoreLLVMInstruction paramStore = new StoreLLVMInstruction("i32", "%" + name, "%_P_" + name);
+                StoreLLVMInstruction paramStore = new StoreLLVMInstruction(typeToLLVM(paramType), "%" + name, "%_P_" + name);
 //                registerMap.put(paramStore.getPointer(), paramStore.getValue());
                 allocateLLVM.add(paramStore);
 
@@ -813,14 +814,26 @@ public class CFGGenerator {
             //Generate gen/kill sets
 //            ((CFGNode) thenEnd).generateGenKill();
         }
+        else if (thenEnd instanceof WhileCFGNode) {
+            WhileCFGNode whileNode = (WhileCFGNode)thenEnd;
+            whileNode.next = joinNode;
+            connectPredecessor(whileNode, joinNode);
+            generateWhileBranches(whileNode);
+        }
         else {
-            System.out.println("thenNode in conditional not instanceof CFGNode");
+            System.out.println("thenNode in conditional not instanceof CFGNode or WhileCFGNode");
         }
         if (elseEnd instanceof CFGNode) {
             CFGNode elseEndCFG = (CFGNode)elseEnd;
             ((CFGNode) elseEnd).next = joinNode;
             connectPredecessor(elseEnd, joinNode);
             checkForNodeBranches(elseEndCFG, joinNode);
+        }
+        else if (elseEnd instanceof WhileCFGNode) {
+            WhileCFGNode whileNode = (WhileCFGNode)elseEnd;
+            whileNode.next = joinNode;
+            connectPredecessor(whileNode, joinNode);
+            generateWhileBranches(whileNode);
         }
         else {
             newNode.elseNode = joinNode;
@@ -832,15 +845,35 @@ public class CFGGenerator {
         }
 
         //Generate guard branch LLVM instruction
-        ResultingLLVMInstruction result = (ResultingLLVMInstruction) guardInstructions.get(guardInstructions.size()-1);
-        String condition = result.getResult();
         String thenLabel = ((AbstractCFGNode) newNode.thenNode).getLabel();
         String elseLabel = (newNode.elseNode != null) ?
                 ((AbstractCFGNode) newNode.elseNode).getLabel() : joinNode.getLabel();
-        ConditionalBranchLLVMInstruction branch = new ConditionalBranchLLVMInstruction(condition, thenLabel, elseLabel);
-        newNode.LLVMInstructions.add(branch);
-        newNode.llvmStrings.add(branch.toString());
-        newNode.ARMInstructions.addAll(branch.toARM(registerMap));
+
+        LLVMInstruction previous = guardInstructions.get(guardInstructions.size()-1);
+        if (previous instanceof ResultingLLVMInstruction) {
+            ResultingLLVMInstruction result = (ResultingLLVMInstruction)previous;
+            String condition = result.getResult();
+            ConditionalBranchLLVMInstruction branch = new ConditionalBranchLLVMInstruction(condition, thenLabel, elseLabel);
+            newNode.LLVMInstructions.add(branch);
+            newNode.llvmStrings.add(branch.toString());
+            newNode.ARMInstructions.addAll(branch.toARM(registerMap));
+        }
+        else if (previous instanceof TrueLLVMInstruction) {
+            UnconditionalBranchLLVMInstruction branch = new UnconditionalBranchLLVMInstruction(thenLabel);
+            newNode.LLVMInstructions.add(branch);
+            newNode.llvmStrings.add(branch.toString());
+            newNode.ARMInstructions.addAll(branch.toARM(registerMap));
+        }
+        else if (previous instanceof FalseLLVMInstruction) {
+            UnconditionalBranchLLVMInstruction branch = new UnconditionalBranchLLVMInstruction(elseLabel);
+            newNode.LLVMInstructions.add(branch);
+            newNode.llvmStrings.add(branch.toString());
+            newNode.ARMInstructions.addAll(branch.toARM(registerMap));
+        }
+        else {
+            System.out.println("processConditional encountered unaccounted for guard LLVMInstruction while settting" +
+                    "up branches");
+        }
 
         return joinNode;
     }
@@ -925,6 +958,20 @@ public class CFGGenerator {
 
             //Generate gen/kill sets
 //            bodyNode.generateGenKill();
+        }
+        else if (bodyEnd instanceof WhileCFGNode) {
+            WhileCFGNode whileNode = (WhileCFGNode)bodyEnd;
+            List<LLVMInstruction> bodyGuardInstructions = generateLLVMFromExpression(guard);
+            LLVMInstruction previous = bodyGuardInstructions.get(bodyGuardInstructions.size()-1);
+            if (previous instanceof TrueLLVMInstruction) {
+                bodyGuardInstructions.remove(bodyGuardInstructions.size()-1);
+                UnconditionalBranchLLVMInstruction branch = new UnconditionalBranchLLVMInstruction(newNode.getLabel());
+                bodyGuardInstructions.add(branch);
+            }
+
+            whileNode.next = newNode;
+            connectPredecessor(whileNode, newNode);
+            generateWhileBranches(whileNode); // TODO: This or newNode?
         }
         else {
             System.out.println("Body of while not instanceof CFGNode");
@@ -1038,6 +1085,14 @@ public class CFGGenerator {
                         sourceResult = new LoadLLVMInstruction(((ImmediateLLVM) previous).getValue(), "i32", null);
                         resultType = sourceResult.getType();
                     }
+                    else if (previous instanceof TrueLLVMInstruction) {
+                        sourceResult = new LoadLLVMInstruction("true", "i1", null);
+                        resultType = sourceResult.getType();
+                    }
+                    else if (previous instanceof FalseLLVMInstruction) {
+                        sourceResult = new LoadLLVMInstruction("false", "i1", null);
+                        resultType = sourceResult.getType();
+                    }
                     else {
                         System.out.println("AssignmentStatement in processStatement encountered unaccounted for instanceof!");
                     }
@@ -1079,6 +1134,19 @@ public class CFGGenerator {
                 if (target instanceof LvalueId) {
                     LvalueId value = (LvalueId)target;
                     args.add("i32* " + storeIdentifierLookup(value.getId()));
+                }
+                else if (target instanceof LvalueDot) {
+                    LvalueDot value = (LvalueDot)target;
+                    List<LLVMInstruction> dotInstructions = processLvalueDotExpression(value);
+                    instructions.addAll(dotInstructions);
+                    LLVMInstruction prev = dotInstructions.get(dotInstructions.size()-1);
+                    if (prev instanceof ResultingLLVMInstruction) {
+                        ResultingLLVMInstruction result = (ResultingLLVMInstruction)prev;
+                        args.add("i32* " + result.getResult());
+                    }
+                    else {
+                        System.out.println("Unaccounted for Instruction type for ReadExpression with target of type LvalueDot");
+                    }
                 }
                 CallLLVMInstruction call = new CallLLVMInstruction(null, "i32 (i8*, ...)*", "scanf", args);
                 instructions.add(call);
@@ -1287,8 +1355,11 @@ public class CFGGenerator {
                 if (field.getType() instanceof StructType) {
                     return "%struct." + structName + "*";
                 }
-                else {
+                else if (field.getType() instanceof IntType) {
                     return "i32";
+                }
+                else if (field.getType() instanceof BoolType) {
+                    return "i1";
                 }
             }
         }
@@ -1356,6 +1427,7 @@ public class CFGGenerator {
             //Generate LLVMInstructions for arguments
             List<Expression> arguments = invocation.getArguments();
             List<String> argsLLVM = new ArrayList<>();
+            int argIndex = 0;
             for (Expression argument : arguments) {
                 List<LLVMInstruction> argumentLLVM = generateLLVMFromExpression(argument);
                 LLVMInstruction paramInstruction = argumentLLVM.get(argumentLLVM.size() - 1);
@@ -1372,10 +1444,22 @@ public class CFGGenerator {
                     argsLLVM.add("i32 " + result.getValue());
                     argumentLLVM.remove(paramInstruction);
                 }
+                else if (paramInstruction instanceof TrueLLVMInstruction) {
+                    argsLLVM.add("i1 true");
+                    argumentLLVM.remove(paramInstruction);
+                }
+                else if (paramInstruction instanceof FalseLLVMInstruction) {
+                    argsLLVM.add("i1 false");
+                    argumentLLVM.remove(paramInstruction);
+                }
+                else if (paramInstruction instanceof NullLLVMInstruction) {
+                    argsLLVM.add(structParamTypeLookup(invocation.getName(), argIndex) + " null");
+                }
                 else {
                     System.out.println("paramInstruction has unaccounted for Instance!");
                 }
                 instructions.addAll(argumentLLVM);
+                argIndex++;
             }
 
             //Generate LLVMInstructions for invocation
@@ -1417,6 +1501,29 @@ public class CFGGenerator {
                 IntegerExpression integer = (IntegerExpression)operand;
                 instructions.add(new ImmediateLLVM("-" + integer.getValue()));
             }
+            else if (operator.equals(UnaryExpression.Operator.NOT)) {
+                List<LLVMInstruction> operandLLVM = generateLLVMFromExpression(operand);
+                LLVMInstruction prev = operandLLVM.get(operandLLVM.size()-1);
+                if (prev instanceof TrueLLVMInstruction) {
+                    instructions.add(new FalseLLVMInstruction());
+                }
+                else if (prev instanceof FalseLLVMInstruction) {
+                    instructions.add(new TrueLLVMInstruction());
+                }
+                else if (prev instanceof ResultingLLVMInstruction) {
+                    ResultingLLVMInstruction result = (ResultingLLVMInstruction)prev;
+                    /*String type = result.getType();
+                    if (result instanceof LoadLLVMInstruction) {
+                        type = type.substring(0, type.length() - 1);
+                    }*/
+                    XORLLVMInstruction xor = new XORLLVMInstruction(newRegLabel(), "i1", result.getResult(), "1");
+                    instructions.addAll(operandLLVM);
+                    instructions.add(xor);
+                }
+                else {
+                    System.out.println("Account for non True/False operand");
+                }
+            }
             else {
                 System.out.println("Other case in UnaryExpression");
             }
@@ -1435,6 +1542,21 @@ public class CFGGenerator {
         }
 
         return instructions;
+    }
+
+    private String structParamTypeLookup(String functionName, int argIndex) {
+        List<Function> functions = this.program.getFuncs();
+        for (Function function : functions) {
+            if (function.getName().equals(functionName)) {
+                List<Declaration> params = function.getParams();
+                Declaration param = params.get(argIndex);
+                Type paramType = param.getType();
+                return typeToLLVM(paramType);
+            }
+        }
+
+        System.out.println("structParamTypeLookup failed to find struct!");
+        return "";
     }
 
     private String getStructSize(String id) {
